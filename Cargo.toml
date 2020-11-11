@@ -1,0 +1,13 @@
+[package]
+name = "graphui-rs"
+version = "0.0.1"
+authors = ["Tom A. Wagner <tom.a.wagner@protonmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cairo-rs = "0.9.1"
+glib = "0.10.3"
+gtk = "0.9.2"
+gio = "0.9.1"
