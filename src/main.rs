@@ -1,7 +1,7 @@
 mod view;
 
-use glib::clone;
 use gio::prelude::*;
+use glib::clone;
 use gtk::prelude::*;
 
 use std::rc::Rc;
@@ -10,9 +10,8 @@ pub struct PipewireLink {
     pub node_from: u32,
     pub port_from: u32,
     pub node_to: u32,
-    pub port_to: u32
+    pub port_to: u32,
 }
-
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     gtk::init()?;
@@ -31,12 +30,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     graphview.add_node(0, node);
     graphview.add_node(1, node2);
-    graphview.add_link(2, PipewireLink {
-        node_from: 0,
-        port_from: 12,
-        node_to: 1,
-        port_to: 13
-    });
+    graphview.add_link(
+        2,
+        PipewireLink {
+            node_from: 0,
+            port_from: 12,
+            node_to: 1,
+            port_to: 13,
+        },
+    );
     // End UI Testing
 
     let graphview = Rc::new(graphview);

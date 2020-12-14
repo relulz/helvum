@@ -62,11 +62,11 @@ fn draw(
 
         cr.move_to(
             (from_alloc.x + from_alloc.width).into(),
-            (from_alloc.y + (from_alloc.height / 2)).into()
+            (from_alloc.y + (from_alloc.height / 2)).into(),
         );
         cr.line_to(
             to_alloc.x.into(),
-            (to_alloc.y + (to_alloc.height / 2)).into()
+            (to_alloc.y + (to_alloc.height / 2)).into(),
         );
 
         cr.stroke();

@@ -24,12 +24,14 @@ impl PipewireNode {
     }
 
     pub fn add_ingoing_port(&mut self, id: u32, port: gtk::Button) {
-        self.widget.attach(&port, 0, (self.ingoing_ports.len() + 1) as i32, 1, 1);
+        self.widget
+            .attach(&port, 0, (self.ingoing_ports.len() + 1) as i32, 1, 1);
         self.ingoing_ports.insert(id, port);
     }
 
     pub fn add_outgoing_port(&mut self, id: u32, port: gtk::Button) {
-        self.widget.attach(&port, 1, (self.outgoing_ports.len() + 1) as i32, 1, 1);
+        self.widget
+            .attach(&port, 1, (self.outgoing_ports.len() + 1) as i32, 1, 1);
         self.outgoing_ports.insert(id, port);
     }
 
