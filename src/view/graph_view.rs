@@ -60,13 +60,18 @@ fn draw(
     for link in links.borrow().values() {
         let (from_alloc, to_alloc) = get_allocs(nodes.clone(), link);
 
+        let from_x: f64 = (from_alloc.x + from_alloc.width).into();
+        let from_y: f64 = (from_alloc.y + (from_alloc.height / 2)).into();
         cr.move_to(
-            (from_alloc.x + from_alloc.width).into(),
-            (from_alloc.y + (from_alloc.height / 2)).into(),
+            from_x, from_y
         );
-        cr.line_to(
-            to_alloc.x.into(),
-            (to_alloc.y + (to_alloc.height / 2)).into(),
+
+        let to_x: f64 = to_alloc.x.into();
+        let to_y: f64 = (to_alloc.y + (to_alloc.height / 2)).into();
+        cr.curve_to(
+            from_x + 75.0, from_y,
+            to_x - 75.0, to_y,
+            to_x, to_y
         );
 
         cr.stroke();
