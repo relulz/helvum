@@ -331,6 +331,7 @@ name = "graphui-rs"
 version = "0.0.1"
 dependencies = [
  "cairo-rs",
+ "gdk",
  "gio",
  "glib",
  "gtk",
