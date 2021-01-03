@@ -12,3 +12,5 @@ glib = "0.10.3"
 gdk = "0.13.2"
 gtk = "0.9.2"
 gio = "0.9.1"
+
+pipewire = { git = "https://gitlab.freedesktop.org/gdesmott/pipewire-rs", branch = "proxies"}

@@ -1,5 +1,6 @@
 mod graph_view;
-mod pipewire_node;
+mod node;
+pub mod port;
 
 pub use graph_view::GraphView;
-pub use pipewire_node::PipewireNode;
+pub use node::Node;

@@ -1,40 +1,47 @@
-use gtk::prelude::*;
 use gdk::prelude::*;
+use gtk::prelude::*;
 use std::collections::HashMap;
 
-pub struct PipewireNode {
+use pipewire::port::Direction;
+
+pub struct Node {
     pub(super) widget: gtk::Grid,
     label: gtk::Label,
     label_box: gtk::EventBox,
-    ingoing_ports: HashMap<u32, gtk::Button>,
-    outgoing_ports: HashMap<u32, gtk::Button>,
+    ports: HashMap<u32, super::port::Port>,
+    num_ports_in: u32,
+    num_ports_out: u32,
 }
 
-impl PipewireNode {
+impl Node {
     pub fn new(name: &str) -> Self {
         let result = Self {
             widget: gtk::Grid::new(),
             label: gtk::Label::new(Some(name)),
             label_box: gtk::EventBox::new(),
-            ingoing_ports: HashMap::new(),
-            outgoing_ports: HashMap::new(),
+            ports: HashMap::new(),
+            num_ports_in: 0,
+            num_ports_out: 0,
         };
 
         result.label_box.add(&result.label);
         result.widget.attach(&result.label_box, 0, 0, 2, 1);
 
+        // Setup needed events for dragging a node.
         result
             .label_box
             .add_events(gdk::EventMask::BUTTON1_MOTION_MASK);
+
+        // Setup callback for dragging the node.
         result
             .label_box
             .connect_motion_notify_event(|label, event| {
-                let grid = label
+                let node_frame = label
                     .get_ancestor(gtk::Grid::static_type())
                     .unwrap()
                     .dynamic_cast::<gtk::Grid>()
                     .unwrap();
-                let graphview = grid
+                let graphview = node_frame
                     .get_ancestor(gtk::Layout::static_type())
                     .unwrap()
                     .dynamic_cast::<gtk::Layout>()
@@ -47,8 +54,8 @@ impl PipewireNode {
 
                 // TODO: Calculate proper values to center the mouse on the label
                 // instead of using hardcoded offsets.
-                graphview.set_child_x(&grid, x as i32 - offset_x - 100);
-                graphview.set_child_y(&grid, y as i32 - offset_y - 50);
+                graphview.set_child_x(&node_frame, x as i32 - offset_x - 100);
+                graphview.set_child_y(&node_frame, y as i32 - offset_y - 50);
 
                 // FIXME: If links become proper widgets,
                 // we don't need to redraw the full graph everytime.
@@ -60,23 +67,25 @@ impl PipewireNode {
         result
     }
 
-    pub fn add_ingoing_port(&mut self, id: u32, port: gtk::Button) {
-        self.widget
-            .attach(&port, 0, (self.ingoing_ports.len() + 1) as i32, 1, 1);
-        self.ingoing_ports.insert(id, port);
+    pub fn add_port(&mut self, id: u32, port: super::port::Port) {
+        match port.direction {
+            Direction::Input => {
+                self.widget
+                    .attach(&port.widget, 0, (self.num_ports_in + 1) as i32, 1, 1);
+                self.num_ports_in += 1;
+            }
+            Direction::Output => {
+                self.widget
+                    .attach(&port.widget, 1, (self.num_ports_out + 1) as i32, 1, 1);
+                self.num_ports_out += 1;
+            }
+        }
+
+        port.widget.show_all();
+        self.ports.insert(id, port);
     }
 
-    pub fn add_outgoing_port(&mut self, id: u32, port: gtk::Button) {
-        self.widget
-            .attach(&port, 1, (self.outgoing_ports.len() + 1) as i32, 1, 1);
-        self.outgoing_ports.insert(id, port);
-    }
-
-    pub fn get_ingoing_port(&self, id: u32) -> Option<&gtk::Button> {
-        self.ingoing_ports.get(&id)
-    }
-
-    pub fn get_outgoing_port(&self, id: u32) -> Option<&gtk::Button> {
-        self.outgoing_ports.get(&id)
+    pub fn get_port(&self, id: u32) -> Option<&super::port::Port> {
+        self.ports.get(&id)
     }
 }

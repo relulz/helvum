@@ -1,11 +1,13 @@
+mod pipewire_connection;
 mod view;
 
 use gio::prelude::*;
 use glib::clone;
 use gtk::prelude::*;
 
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
+#[derive(Debug)]
 pub struct PipewireLink {
     pub node_from: u32,
     pub port_from: u32,
@@ -15,33 +17,18 @@ pub struct PipewireLink {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     gtk::init()?;
-    let mut graphview = view::GraphView::new();
+    let graphview = Rc::new(RefCell::new(view::GraphView::new()));
 
-    // For UI Testing purposes
-    let mut node = view::PipewireNode::new("Test Node");
-    node.add_ingoing_port(10, gtk::Button::with_label("Ingoing Port"));
-    node.add_outgoing_port(11, gtk::Button::with_label("Outgoing Port"));
-    node.add_outgoing_port(12, gtk::Button::with_label("Outgoing Port 2"));
-
-    let mut node2 = view::PipewireNode::new("Test Node 2");
-    node2.add_ingoing_port(13, gtk::Button::with_label("Ingoing Port"));
-    node2.add_outgoing_port(14, gtk::Button::with_label("Outgoing Port"));
-    node2.add_outgoing_port(15, gtk::Button::with_label("Outgoing Port 2"));
-
-    graphview.add_node(0, node);
-    graphview.add_node(1, node2);
-    graphview.add_link(
-        2,
-        PipewireLink {
-            node_from: 0,
-            port_from: 12,
-            node_to: 1,
-            port_to: 13,
-        },
-    );
-    // End UI Testing
-
-    let graphview = Rc::new(graphview);
+    // Create the connection to the pipewire server and do an initial roundtrip before showing the view,
+    // so that the graph is already populated when the window opens.
+    let pw_con = pipewire_connection::PipewireConnection::new(graphview.clone())
+        .expect("Failed to initialize pipewire connection");
+    pw_con.roundtrip();
+    // From now on, call roundtrip() every second.
+    glib::timeout_add_seconds_local(1, move || {
+        pw_con.roundtrip();
+        Continue(true)
+    });
 
     let app = gtk::Application::new(
         Some("org.freedesktop.pipewire.graphui"),
@@ -53,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let window = gtk::ApplicationWindow::new(app);
         window.set_default_size(800, 600);
         window.set_title("Pipewire Graph Editor");
-        window.add(&graphview.widget);
+        window.add(&graphview.borrow().widget);
         window.show_all();
     }));
 
