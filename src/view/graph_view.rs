@@ -1,110 +1,247 @@
 use super::Node;
-use cairo::Context;
-use glib::clone;
-use gtk::{prelude::*, LayoutExt};
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-pub struct GraphView {
-    pub(crate) widget: gtk::Layout,
-    nodes: Rc<RefCell<HashMap<u32, Node>>>,
-    links: Rc<RefCell<HashMap<u32, crate::PipewireLink>>>,
+use gtk::{glib, prelude::*, subclass::prelude::ObjectSubclass, WidgetExt};
+
+use std::collections::HashMap;
+
+mod imp {
+    use super::*;
+
+    use gtk::{gdk, graphene, gsk, subclass::prelude::*, WidgetExt};
+
+    use std::{cell::RefCell, rc::Rc};
+
+    pub struct GraphView {
+        nodes: RefCell<HashMap<u32, Node>>,
+        links: RefCell<HashMap<u32, crate::PipewireLink>>,
+        dragged: Rc<RefCell<Option<gtk::Widget>>>,
+    }
+
+    impl ObjectSubclass for GraphView {
+        const NAME: &'static str = "GraphView";
+        type Type = super::GraphView;
+        type ParentType = gtk::Widget;
+        type Instance = glib::subclass::simple::InstanceStruct<Self>;
+        type Class = glib::subclass::simple::ClassStruct<Self>;
+
+        glib::object_subclass!();
+
+        fn class_init(klass: &mut Self::Class) {
+            // The layout manager determines how child widgets are laid out.
+            klass.set_layout_manager_type::<gtk::FixedLayout>();
+        }
+
+        fn new() -> Self {
+            Self {
+                nodes: RefCell::new(HashMap::new()),
+                links: RefCell::new(HashMap::new()),
+                dragged: Rc::new(RefCell::new(None)),
+            }
+        }
+    }
+
+    impl ObjectImpl for GraphView {
+        fn constructed(&self, obj: &Self::Type) {
+            self.parent_constructed(obj);
+
+            let motion_controller = gtk::EventControllerMotion::new();
+            motion_controller.connect_motion(|controller, x, y| {
+                if controller
+                    .get_current_event()
+                    .unwrap()
+                    .get_modifier_state()
+                    .contains(gdk::ModifierType::BUTTON1_MASK)
+                {
+                    let instance = controller
+                        .get_widget()
+                        .unwrap()
+                        .dynamic_cast::<Self::Type>()
+                        .unwrap();
+                    let this = imp::GraphView::from_instance(&instance);
+                    if let Some(ref widget) = *this.dragged.borrow() {
+                        this.move_node(&widget, x as f32, y as f32);
+                    };
+                }
+            });
+            obj.add_controller(&motion_controller);
+        }
+
+        fn dispose(&self, _obj: &Self::Type) {
+            self.nodes
+                .borrow()
+                .values()
+                .for_each(|node| node.widget.unparent())
+        }
+    }
+
+    impl WidgetImpl for GraphView {
+        fn snapshot(&self, widget: &Self::Type, snapshot: &gtk::Snapshot) {
+            // TODO: Draw links after we can move nodes
+            let snapshot = snapshot.downcast_ref::<gtk::Snapshot>().unwrap();
+
+            let alloc = widget.get_allocation();
+            let rect = gtk::graphene::Rect::new(0.0, 0.0, alloc.width as f32, alloc.height as f32);
+
+            let cr = snapshot
+                .append_cairo(&rect)
+                .expect("Failed to get cairo context");
+
+            // Draw background
+            cr.set_source_rgb(255.0, 255.0, 255.0);
+            cr.paint();
+
+            // Draw all links
+            cr.set_line_width(2.0);
+            cr.set_source_rgb(0.0, 0.0, 0.0);
+            for link in self.links.borrow().values() {
+                if let Some((from_x, from_y, to_x, to_y)) = self.get_link_coordinates(link) {
+                    cr.move_to(from_x, from_y);
+                    cr.curve_to(from_x + 75.0, from_y, to_x - 75.0, to_y, to_x, to_y);
+                    cr.stroke();
+                } else {
+                    eprintln!("Could not get allocation of ports of link: {:?}", link);
+                }
+            }
+
+            // Draw all children
+            self.nodes
+                .borrow()
+                .values()
+                .for_each(|node| self.get_instance().snapshot_child(&node.widget, snapshot));
+        }
+    }
+
+    impl GraphView {
+        pub fn add_node(&self, id: u32, node: Node) {
+            // Place widgets in colums of 4, growing down, then right.
+            // TODO: Make a better positioning algorithm.
+            let x = (self.nodes.borrow().len() / 4) as f32 * 400.0;
+            let y = self.nodes.borrow().len() as f32 % 4.0 * 100.0;
+
+            self.move_node(&node.widget.clone().upcast(), x, y);
+
+            self.nodes.borrow_mut().insert(id, node);
+        }
+
+        pub fn move_node(&self, node: &gtk::Widget, x: f32, y: f32) {
+            let layout_manager = self
+                .get_instance()
+                .get_layout_manager()
+                .expect("Failed to get layout manager")
+                .dynamic_cast::<gtk::FixedLayout>()
+                .expect("Failed to cast to FixedLayout");
+
+            let transform = gsk::Transform::new()
+                .translate(&graphene::Point::new(x, y))
+                .unwrap();
+
+            layout_manager
+                .get_layout_child(node)
+                .expect("Could not get layout child")
+                .dynamic_cast::<gtk::FixedLayoutChild>()
+                .expect("Could not cast to FixedLayoutChild")
+                .set_transform(&transform);
+        }
+
+        pub fn add_port_to_node(&self, node_id: u32, port_id: u32, port: crate::view::port::Port) {
+            if let Some(node) = self.nodes.borrow_mut().get_mut(&node_id) {
+                node.add_port(port_id, port);
+            } else {
+                // FIXME: Log this instead
+                eprintln!(
+                    "Node with id {} not found when trying to add port with id {} to graph",
+                    node_id, port_id
+                );
+            }
+        }
+
+        /// Add a link to the graph.
+        ///
+        /// `add_link` takes three arguments: `link_id` is the id of the link as assigned by the pipewire server,
+        /// `from` and `to` are the id's of the ingoing and outgoing port, respectively.
+        pub fn add_link(&self, link_id: u32, link: crate::PipewireLink) {
+            self.links.borrow_mut().insert(link_id, link);
+        }
+
+        pub fn set_dragged(&self, widget: Option<gtk::Widget>) {
+            *self.dragged.borrow_mut() = widget;
+        }
+
+        /// Get coordinates for the drawn link to start at and to end at.
+        ///
+        /// # Returns
+        /// Some((from_x, from_y, to_x, to_y)) if all objects the links refers to exist as widgets.
+        fn get_link_coordinates(&self, link: &crate::PipewireLink) -> Option<(f64, f64, f64, f64)> {
+            let nodes = self.nodes.borrow();
+
+            // For some reason, gtk4::WidgetExt::translate_coordinates gives me incorrect values,
+            // so we manually calculate the needed offsets here.
+
+            let from_port = &nodes.get(&link.node_from)?.get_port(link.port_from)?.widget;
+            let gtk::Allocation {
+                x: mut fx,
+                y: mut fy,
+                width: fw,
+                height: fh,
+            } = from_port.get_allocation();
+            let from_node = from_port.get_ancestor(gtk::Grid::static_type()).unwrap();
+            let gtk::Allocation { x: fnx, y: fny, .. } = from_node.get_allocation();
+            fx += fnx + fw;
+            fy += fny + (fh / 2);
+
+            let to_port = &nodes.get(&link.node_to)?.get_port(link.port_to)?.widget;
+            let gtk::Allocation {
+                x: mut tx,
+                y: mut ty,
+                height: th,
+                ..
+            } = to_port.get_allocation();
+            let to_node = to_port.get_ancestor(gtk::Grid::static_type()).unwrap();
+            let gtk::Allocation { x: tnx, y: tny, .. } = to_node.get_allocation();
+            tx += tnx;
+            ty += tny + (th / 2);
+
+            Some((fx as f64, fy as f64, tx as f64, ty as f64))
+        }
+    }
+}
+
+glib::wrapper! {
+    pub struct GraphView(ObjectSubclass<imp::GraphView>)
+        @extends gtk::Widget;
 }
 
 impl GraphView {
     pub fn new() -> Self {
-        let result = Self {
-            widget: gtk::Layout::new::<gtk::Adjustment, gtk::Adjustment>(None, None),
-            nodes: Rc::new(RefCell::new(HashMap::new())),
-            links: Rc::new(RefCell::new(HashMap::new())),
-        };
-
-        result.widget.connect_draw(clone!(
-        @weak result.nodes as nodes, @weak result.links as links => @default-panic,
-        move |_, cr| {
-            draw(nodes, links, cr);
-            Inhibit(false)
-        }));
-
-        result
+        glib::Object::new(&[]).expect("Failed to create GraphView")
     }
 
-    pub fn add_node(&mut self, id: u32, node: Node) {
-        // TODO: Find a free position to put the widget at.
-        self.widget.put(
-            &node.widget,
-            (self.nodes.borrow().len() / 4 * 400) as i32,
-            (self.nodes.borrow().len() % 4 * 100) as i32,
-        );
-        node.widget.show_all();
-        self.nodes.borrow_mut().insert(id, node);
+    pub fn add_node(&self, id: u32, node: Node) {
+        node.widget.set_parent(self);
+        imp::GraphView::from_instance(self).add_node(id, node)
     }
 
-    pub fn add_port_to_node(&mut self, node_id: u32, port_id: u32, port: super::port::Port) {
-        if let Some(node) = self.nodes.borrow_mut().get_mut(&node_id) {
-            node.add_port(port_id, port);
-        } else {
-            // FIXME: Log this instead
-            eprintln!(
-                "Node with id {} not found when trying to add port with id {} to graph",
-                node_id, port_id
-            );
-        }
+    pub fn add_port_to_node(&self, node_id: u32, port_id: u32, port: crate::view::port::Port) {
+        imp::GraphView::from_instance(self).add_port_to_node(node_id, port_id, port)
     }
 
     /// Add a link to the graph.
     ///
     /// `add_link` takes three arguments: `link_id` is the id of the link as assigned by the pipewire server,
     /// `from` and `to` are the id's of the ingoing and outgoing port, respectively.
-    pub fn add_link(&mut self, link_id: u32, link: crate::PipewireLink) {
-        self.links.borrow_mut().insert(link_id, link);
-        self.widget.queue_draw();
+    pub fn add_link(&self, link_id: u32, link: crate::PipewireLink) {
+        imp::GraphView::from_instance(self).add_link(link_id, link);
+        self.queue_draw();
     }
-}
 
-fn draw(
-    nodes: Rc<RefCell<HashMap<u32, Node>>>,
-    links: Rc<RefCell<HashMap<u32, crate::PipewireLink>>>,
-    cr: &Context,
-) {
-    cr.set_line_width(2.0);
-    cr.set_source_rgb(255.0, 255.0, 255.0);
-    cr.paint();
-    cr.set_source_rgb(0.0, 0.0, 0.0);
-    for link in links.borrow().values() {
-        if let Some((from_alloc, to_alloc)) = get_allocs(nodes.clone(), link) {
-            let from_x: f64 = (from_alloc.x + from_alloc.width).into();
-            let from_y: f64 = (from_alloc.y + (from_alloc.height / 2)).into();
-            cr.move_to(from_x, from_y);
-
-            let to_x: f64 = to_alloc.x.into();
-            let to_y: f64 = (to_alloc.y + (to_alloc.height / 2)).into();
-            cr.curve_to(from_x + 75.0, from_y, to_x - 75.0, to_y, to_x, to_y);
-
-            cr.stroke();
-        } else {
-            eprintln!("Could not get allocation of ports of link: {:?}", link);
-        }
+    pub fn set_dragged(&self, widget: Option<gtk::Widget>) {
+        imp::GraphView::from_instance(self).set_dragged(widget)
     }
-}
 
-fn get_allocs(
-    nodes: Rc<RefCell<HashMap<u32, Node>>>,
-    link: &crate::PipewireLink,
-) -> Option<(gtk::Allocation, gtk::Allocation)> {
-    println!();
-
-    let from_alloc = &nodes
-        .borrow()
-        .get(&link.node_from)?
-        .get_port(link.port_from)?
-        .widget
-        .get_allocation();
-    let to_alloc = &nodes
-        .borrow()
-        .get(&link.node_to)?
-        .get_port(link.port_to)?
-        .widget
-        .get_allocation();
-
-    Some((from_alloc.to_owned(), to_alloc.to_owned()))
+    pub fn move_node(&self, node: &gtk::Widget, x: f32, y: f32) {
+        imp::GraphView::from_instance(self).move_node(node, x, y);
+        // FIXME: If links become proper widgets,
+        // we don't need to redraw the full graph everytime.
+        self.queue_draw();
+    }
 }

@@ -1,13 +1,12 @@
+use crate::PipewireLink;
+
+use pipewire as pw;
+use pw::{port::Direction, registry::ObjectType, PW_ID_CORE};
+
 use std::{
     cell::{Cell, RefCell},
     rc::Rc,
 };
-
-use glib::clone;
-use pipewire as pw;
-use pw::{port::Direction, registry::ObjectType, PW_ID_CORE};
-
-use crate::PipewireLink;
 
 pub struct PipewireConnection {
     mainloop: pw::MainLoop,
@@ -28,11 +27,12 @@ impl PipewireConnection {
             .map_err(|_| "Failed to connect to pipewire core")?;
         let registry = core.get_registry();
 
+        let graphview = Rc::downgrade(&graphview.clone());
         let reg_listeners = registry
             .add_listener_local()
-            .global(clone!(@weak graphview => @default-panic, move |global| {
-                PipewireConnection::handle_global(graphview, global)
-            }))
+            .global(move |global| {
+                PipewireConnection::handle_global(graphview.upgrade().unwrap(), global)
+            })
             .global_remove(|_| { /* TODO */ })
             .register();
 

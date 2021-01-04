@@ -1,8 +1,6 @@
 mod pipewire_connection;
 mod view;
 
-use gio::prelude::*;
-use glib::clone;
 use gtk::prelude::*;
 
 use std::{cell::RefCell, rc::Rc};
@@ -25,24 +23,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("Failed to initialize pipewire connection");
     pw_con.roundtrip();
     // From now on, call roundtrip() every second.
-    glib::timeout_add_seconds_local(1, move || {
+    gtk::glib::timeout_add_seconds_local(1, move || {
         pw_con.roundtrip();
         Continue(true)
     });
 
     let app = gtk::Application::new(
         Some("org.freedesktop.pipewire.graphui"),
-        gio::ApplicationFlags::FLAGS_NONE,
+        Default::default()
     )
     .expect("Application creation failed");
 
-    app.connect_activate(clone!(@strong graphview => move |app| {
-        let window = gtk::ApplicationWindow::new(app);
-        window.set_default_size(800, 600);
-        window.set_title("Pipewire Graph Editor");
-        window.add(&graphview.borrow().widget);
-        window.show_all();
-    }));
+    app.connect_activate(move |app| {
+        let window = gtk::ApplicationWindowBuilder::new()
+            .application(app)
+            .default_width(800)
+            .default_height(600)
+            .title("Pipewire Graph Editor")
+            .child(&*graphview.borrow())
+            .build();
+        window.show();
+    });
 
     app.run(&std::env::args().collect::<Vec<_>>());
 
