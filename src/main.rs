@@ -28,11 +28,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Continue(true)
     });
 
-    let app = gtk::Application::new(
-        Some("org.freedesktop.pipewire.graphui"),
-        Default::default()
-    )
-    .expect("Application creation failed");
+    let app = gtk::Application::new(Some("org.freedesktop.pipewire.graphui"), Default::default())
+        .expect("Application creation failed");
 
     app.connect_activate(move |app| {
         let window = gtk::ApplicationWindowBuilder::new()
@@ -42,6 +39,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .title("Pipewire Graph Editor")
             .child(&*graphview.borrow())
             .build();
+        window
+            .get_settings()
+            .set_property_gtk_application_prefer_dark_theme(true);
         window.show();
     });
 

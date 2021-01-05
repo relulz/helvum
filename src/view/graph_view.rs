@@ -76,19 +76,43 @@ mod imp {
 
     impl WidgetImpl for GraphView {
         fn snapshot(&self, widget: &Self::Type, snapshot: &gtk::Snapshot) {
-            // TODO: Draw links after we can move nodes
+            /* FIXME: A lot of hardcoded values in here.
+            Try to use relative units (em) and colours from the theme as much as possible. */
             let snapshot = snapshot.downcast_ref::<gtk::Snapshot>().unwrap();
 
             let alloc = widget.get_allocation();
-            let rect = gtk::graphene::Rect::new(0.0, 0.0, alloc.width as f32, alloc.height as f32);
 
             let cr = snapshot
-                .append_cairo(&rect)
+                .append_cairo(&graphene::Rect::new(
+                    0.0,
+                    0.0,
+                    alloc.width as f32,
+                    alloc.height as f32,
+                ))
                 .expect("Failed to get cairo context");
 
-            // Draw background
-            cr.set_source_rgb(255.0, 255.0, 255.0);
-            cr.paint();
+            // Try to replace the background color with a darker one from the theme.
+            if let Some(rgba) = widget.get_style_context().lookup_color("text_view_bg") {
+                cr.set_source_rgb(rgba.red.into(), rgba.green.into(), rgba.blue.into());
+                cr.paint();
+            } // TODO: else log colour not found
+
+            // Draw a nice grid on the background.
+            cr.set_source_rgb(0.18, 0.18, 0.18);
+            cr.set_line_width(0.2); // TODO: Set to 1px
+            let mut y = 0.0;
+            while y < alloc.height.into() {
+                cr.move_to(0.0, y);
+                cr.line_to(alloc.width as f64, y);
+                y += 20.0; // TODO: Change to em;
+            }
+            let mut x = 0.0;
+            while x < alloc.width as f64 {
+                cr.move_to(x, 0.0);
+                cr.line_to(x, alloc.height as f64);
+                x += 20.0; // TODO: Change to em;
+            }
+            cr.stroke();
 
             // Draw all links
             cr.set_line_width(2.0);
@@ -100,6 +124,7 @@ mod imp {
                     cr.stroke();
                 } else {
                     eprintln!("Could not get allocation of ports of link: {:?}", link);
+                    // FIXME: Log an info instead.
                 }
             }
 
