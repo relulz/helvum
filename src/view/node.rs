@@ -1,7 +1,7 @@
 use super::graph_view::GraphView;
 
-use pipewire::port::Direction;
 use gtk::prelude::*;
+use pipewire::port::Direction;
 
 use std::collections::HashMap;
 
@@ -51,6 +51,11 @@ impl Node {
                 .set_dragged(None);
         });
         result.label.add_controller(&motion_controller);
+
+        // Display a grab cursor when the mouse is over the label so the user knows the node can be dragged.
+        result
+            .label
+            .set_cursor(gtk::gdk::Cursor::from_name("grab", None).as_ref());
 
         result.widget.attach(&result.label, 0, 0, 2, 1);
 
