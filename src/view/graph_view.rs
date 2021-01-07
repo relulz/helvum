@@ -78,7 +78,6 @@ mod imp {
         fn snapshot(&self, widget: &Self::Type, snapshot: &gtk::Snapshot) {
             /* FIXME: A lot of hardcoded values in here.
             Try to use relative units (em) and colours from the theme as much as possible. */
-            let snapshot = snapshot.downcast_ref::<gtk::Snapshot>().unwrap();
 
             let alloc = widget.get_allocation();
 
