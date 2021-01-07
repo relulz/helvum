@@ -1,13 +1,13 @@
 use super::Node;
 
-use gtk::{glib, prelude::*, subclass::prelude::ObjectSubclass, WidgetExt};
+use gtk::{glib, prelude::*, subclass::prelude::*, WidgetExt};
 
 use std::collections::HashMap;
 
 mod imp {
     use super::*;
 
-    use gtk::{gdk, graphene, gsk, subclass::prelude::*, WidgetExt};
+    use gtk::{gdk, graphene, gsk, WidgetExt};
 
     use std::{cell::RefCell, rc::Rc};
 
@@ -70,7 +70,7 @@ mod imp {
             self.nodes
                 .borrow()
                 .values()
-                .for_each(|node| node.widget.unparent())
+                .for_each(|node| node.unparent())
         }
     }
 
@@ -132,7 +132,7 @@ mod imp {
             self.nodes
                 .borrow()
                 .values()
-                .for_each(|node| self.get_instance().snapshot_child(&node.widget, snapshot));
+                .for_each(|node| self.get_instance().snapshot_child(node, snapshot));
         }
     }
 
@@ -143,7 +143,7 @@ mod imp {
             let x = (self.nodes.borrow().len() / 4) as f32 * 400.0;
             let y = self.nodes.borrow().len() as f32 % 4.0 * 100.0;
 
-            self.move_node(&node.widget.clone().upcast(), x, y);
+            self.move_node(&node.clone().upcast(), x, y);
 
             self.nodes.borrow_mut().insert(id, node);
         }
@@ -209,7 +209,9 @@ mod imp {
                 width: fw,
                 height: fh,
             } = from_port.get_allocation();
-            let from_node = from_port.get_ancestor(gtk::Grid::static_type()).unwrap();
+            let from_node = from_port
+                .get_ancestor(Node::static_type())
+                .expect("Port is not a child of a node");
             let gtk::Allocation { x: fnx, y: fny, .. } = from_node.get_allocation();
             fx += fnx + fw;
             fy += fny + (fh / 2);
@@ -221,7 +223,9 @@ mod imp {
                 height: th,
                 ..
             } = to_port.get_allocation();
-            let to_node = to_port.get_ancestor(gtk::Grid::static_type()).unwrap();
+            let to_node = to_port
+                .get_ancestor(Node::static_type())
+                .expect("Port is not a child of a node");
             let gtk::Allocation { x: tnx, y: tny, .. } = to_node.get_allocation();
             tx += tnx;
             ty += tny + (th / 2);
@@ -242,7 +246,7 @@ impl GraphView {
     }
 
     pub fn add_node(&self, id: u32, node: Node) {
-        node.widget.set_parent(self);
+        node.set_parent(self);
         imp::GraphView::from_instance(self).add_node(id, node)
     }
 
