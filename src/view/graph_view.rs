@@ -1,20 +1,20 @@
 use super::Node;
 
-use gtk::{glib, prelude::*, subclass::prelude::*, WidgetExt};
+use gtk::{glib, graphene, gsk, prelude::*, subclass::prelude::*, WidgetExt};
 
 use std::collections::HashMap;
 
 mod imp {
     use super::*;
 
-    use gtk::{gdk, graphene, gsk, WidgetExt};
+    use gtk::{gdk, WidgetExt};
 
     use std::{cell::RefCell, rc::Rc};
 
     pub struct GraphView {
-        nodes: RefCell<HashMap<u32, Node>>,
-        links: RefCell<HashMap<u32, crate::PipewireLink>>,
-        dragged: Rc<RefCell<Option<gtk::Widget>>>,
+        pub(super) nodes: RefCell<HashMap<u32, Node>>,
+        pub(super) links: RefCell<HashMap<u32, crate::PipewireLink>>,
+        pub(super) dragged: Rc<RefCell<Option<gtk::Widget>>>,
     }
 
     impl ObjectSubclass for GraphView {
@@ -136,61 +136,6 @@ mod imp {
     }
 
     impl GraphView {
-        pub fn add_node(&self, id: u32, node: Node) {
-            // Place widgets in colums of 4, growing down, then right.
-            // TODO: Make a better positioning algorithm.
-            let x = (self.nodes.borrow().len() / 4) as f32 * 400.0;
-            let y = self.nodes.borrow().len() as f32 % 4.0 * 100.0;
-
-            self.move_node(&node.clone().upcast(), x, y);
-
-            self.nodes.borrow_mut().insert(id, node);
-        }
-
-        pub fn move_node(&self, node: &gtk::Widget, x: f32, y: f32) {
-            let layout_manager = self
-                .get_instance()
-                .get_layout_manager()
-                .expect("Failed to get layout manager")
-                .dynamic_cast::<gtk::FixedLayout>()
-                .expect("Failed to cast to FixedLayout");
-
-            let transform = gsk::Transform::new()
-                .translate(&graphene::Point::new(x, y))
-                .unwrap();
-
-            layout_manager
-                .get_layout_child(node)
-                .expect("Could not get layout child")
-                .dynamic_cast::<gtk::FixedLayoutChild>()
-                .expect("Could not cast to FixedLayoutChild")
-                .set_transform(&transform);
-        }
-
-        pub fn add_port_to_node(&self, node_id: u32, port_id: u32, port: crate::view::port::Port) {
-            if let Some(node) = self.nodes.borrow_mut().get_mut(&node_id) {
-                node.add_port(port_id, port);
-            } else {
-                // FIXME: Log this instead
-                eprintln!(
-                    "Node with id {} not found when trying to add port with id {} to graph",
-                    node_id, port_id
-                );
-            }
-        }
-
-        /// Add a link to the graph.
-        ///
-        /// `add_link` takes three arguments: `link_id` is the id of the link as assigned by the pipewire server,
-        /// `from` and `to` are the id's of the ingoing and outgoing port, respectively.
-        pub fn add_link(&self, link_id: u32, link: crate::PipewireLink) {
-            self.links.borrow_mut().insert(link_id, link);
-        }
-
-        pub fn set_dragged(&self, widget: Option<gtk::Widget>) {
-            *self.dragged.borrow_mut() = widget;
-        }
-
         /// Get coordinates for the drawn link to start at and to end at.
         ///
         /// # Returns
@@ -245,12 +190,31 @@ impl GraphView {
     }
 
     pub fn add_node(&self, id: u32, node: Node) {
+        let private = imp::GraphView::from_instance(self);
         node.set_parent(self);
-        imp::GraphView::from_instance(self).add_node(id, node)
+
+        // Place widgets in colums of 4, growing down, then right.
+        // TODO: Make a better positioning algorithm.
+        let x = (private.nodes.borrow().len() / 4) as f32 * 400.0; // This relies on integer division rounding down.
+        let y = private.nodes.borrow().len() as f32 % 4.0 * 100.0;
+
+        self.move_node(&node.clone().upcast(), x, y);
+
+        private.nodes.borrow_mut().insert(id, node);
     }
 
     pub fn add_port_to_node(&self, node_id: u32, port_id: u32, port: crate::view::port::Port) {
-        imp::GraphView::from_instance(self).add_port_to_node(node_id, port_id, port)
+        let private = imp::GraphView::from_instance(self);
+
+        if let Some(node) = private.nodes.borrow_mut().get_mut(&node_id) {
+            node.add_port(port_id, port);
+        } else {
+            // FIXME: Log this instead
+            eprintln!(
+                "Node with id {} not found when trying to add port with id {} to graph",
+                node_id, port_id
+            );
+        }
     }
 
     /// Add a link to the graph.
@@ -258,16 +222,33 @@ impl GraphView {
     /// `add_link` takes three arguments: `link_id` is the id of the link as assigned by the pipewire server,
     /// `from` and `to` are the id's of the ingoing and outgoing port, respectively.
     pub fn add_link(&self, link_id: u32, link: crate::PipewireLink) {
-        imp::GraphView::from_instance(self).add_link(link_id, link);
+        let private = imp::GraphView::from_instance(self);
+        private.links.borrow_mut().insert(link_id, link);
         self.queue_draw();
     }
 
     pub fn set_dragged(&self, widget: Option<gtk::Widget>) {
-        imp::GraphView::from_instance(self).set_dragged(widget)
+        *imp::GraphView::from_instance(self).dragged.borrow_mut() = widget;
     }
 
     pub fn move_node(&self, node: &gtk::Widget, x: f32, y: f32) {
-        imp::GraphView::from_instance(self).move_node(node, x, y);
+        let layout_manager = self
+            .get_layout_manager()
+            .expect("Failed to get layout manager")
+            .dynamic_cast::<gtk::FixedLayout>()
+            .expect("Failed to cast to FixedLayout");
+
+        let transform = gsk::Transform::new()
+            .translate(&graphene::Point::new(x, y))
+            .unwrap();
+
+        layout_manager
+            .get_layout_child(node)
+            .expect("Could not get layout child")
+            .dynamic_cast::<gtk::FixedLayoutChild>()
+            .expect("Could not cast to FixedLayoutChild")
+            .set_transform(&transform);
+
         // FIXME: If links become proper widgets,
         // we don't need to redraw the full graph everytime.
         self.queue_draw();
