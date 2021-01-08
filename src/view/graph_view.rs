@@ -44,24 +44,26 @@ mod imp {
         fn constructed(&self, obj: &Self::Type) {
             self.parent_constructed(obj);
 
+            // Move the Node that is currently being dragged to the cursor position as long as Mouse Button 1 is held.
             let motion_controller = gtk::EventControllerMotion::new();
             motion_controller.connect_motion(|controller, x, y| {
-                if controller
-                    .get_current_event()
+                let instance = controller
+                    .get_widget()
                     .unwrap()
-                    .get_modifier_state()
-                    .contains(gdk::ModifierType::BUTTON1_MASK)
-                {
-                    let instance = controller
-                        .get_widget()
+                    .dynamic_cast::<Self::Type>()
+                    .unwrap();
+                let this = imp::GraphView::from_instance(&instance);
+
+                if let Some(ref widget) = *this.dragged.borrow() {
+                    if controller
+                        .get_current_event()
                         .unwrap()
-                        .dynamic_cast::<Self::Type>()
-                        .unwrap();
-                    let this = imp::GraphView::from_instance(&instance);
-                    if let Some(ref widget) = *this.dragged.borrow() {
-                        this.move_node(&widget, x as f32, y as f32);
-                    };
-                }
+                        .get_modifier_state()
+                        .contains(gdk::ModifierType::BUTTON1_MASK)
+                    {
+                        instance.move_node(&widget, x as f32, y as f32);
+                    }
+                };
             });
             obj.add_controller(&motion_controller);
         }
