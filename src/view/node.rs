@@ -142,4 +142,16 @@ impl Node {
             .get(&id)
             .map(|port_rc| port_rc.clone())
     }
+
+    pub fn remove_port(&self, id: u32) {
+        let private = imp::Node::from_instance(self);
+        if let Some(port) = private.ports.borrow_mut().remove(&id) {
+            match port.direction {
+                Direction::Input => private.num_ports_in.set(private.num_ports_in.get() - 1),
+                Direction::Output => private.num_ports_in.set(private.num_ports_out.get() - 1),
+            }
+
+            port.widget.unparent();
+        }
+    }
 }

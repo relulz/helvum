@@ -1,4 +1,5 @@
 mod pipewire_connection;
+mod pipewire_state;
 mod view;
 
 use gtk::prelude::*;
@@ -19,8 +20,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create the connection to the pipewire server and do an initial roundtrip before showing the view,
     // so that the graph is already populated when the window opens.
-    let pw_con = pipewire_connection::PipewireConnection::new(graphview.clone())
-        .expect("Failed to initialize pipewire connection");
+    let pw_con = pipewire_connection::PipewireConnection::new(pipewire_state::PipewireState::new(
+        graphview.clone(),
+    ))
+    .expect("Failed to initialize pipewire connection");
     pw_con.roundtrip();
     // From now on, call roundtrip() every second.
     gtk::glib::timeout_add_seconds_local(1, move || {

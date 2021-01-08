@@ -205,6 +205,14 @@ impl GraphView {
         private.nodes.borrow_mut().insert(id, node);
     }
 
+    pub fn remove_node(&self, id: u32) {
+        let private = imp::GraphView::from_instance(self);
+        let mut nodes = private.nodes.borrow_mut();
+        if let Some(node) = nodes.remove(&id) {
+            node.unparent();
+        }
+    }
+
     pub fn add_port_to_node(&self, node_id: u32, port_id: u32, port: crate::view::port::Port) {
         let private = imp::GraphView::from_instance(self);
 
@@ -226,6 +234,14 @@ impl GraphView {
     pub fn add_link(&self, link_id: u32, link: crate::PipewireLink) {
         let private = imp::GraphView::from_instance(self);
         private.links.borrow_mut().insert(link_id, link);
+        self.queue_draw();
+    }
+
+    pub fn remove_link(&self, id: u32) {
+        let private = imp::GraphView::from_instance(self);
+        let mut links = private.links.borrow_mut();
+        links.remove(&id);
+
         self.queue_draw();
     }
 
