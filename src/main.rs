@@ -32,7 +32,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("Application creation failed");
 
     app.connect_activate(move |app| {
-        let scrollwindow = gtk::ScrolledWindowBuilder::new().child(&*graphview.borrow()).build();
+        let scrollwindow = gtk::ScrolledWindowBuilder::new()
+            .child(&*graphview.borrow())
+            .build();
         let window = gtk::ApplicationWindowBuilder::new()
             .application(app)
             .default_width(1280)

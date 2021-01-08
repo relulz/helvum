@@ -10,7 +10,7 @@ impl Port {
         Self {
             widget: gtk::Button::with_label(name),
             id,
-            direction
+            direction,
         }
     }
 }
