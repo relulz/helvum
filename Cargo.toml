@@ -1,6 +1,6 @@
 [package]
-name = "graphui-rs"
-version = "0.0.1"
+name = "graphui"
+version = "0.1.0"
 authors = ["Tom A. Wagner <tom.a.wagner@protonmail.com>"]
 edition = "2018"
 

@@ -464,8 +464,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "graphui-rs"
-version = "0.0.1"
+name = "graphui"
+version = "0.1.0"
 dependencies = [
  "env_logger",
  "gtk4",
