@@ -21,7 +21,7 @@ mod imp {
     impl ObjectSubclass for Node {
         const NAME: &'static str = "Node";
         type Type = super::Node;
-        type ParentType = gtk::Frame;
+        type ParentType = gtk::Widget;
         type Instance = glib::subclass::simple::InstanceStruct<Self>;
         type Class = glib::subclass::simple::ClassStruct<Self>;
 
@@ -90,7 +90,6 @@ mod imp {
         }
     }
 
-    impl FrameImpl for Node {}
     impl WidgetImpl for Node {}
 }
 
