@@ -145,8 +145,7 @@ impl PipewireState {
 
             self.items.remove(&id);
         } else {
-            // FIXME: Switch to log macro
-            eprintln!(
+            log::warn!(
                 "Attempted to remove item with id {} that is not saved in state",
                 id
             );

@@ -15,7 +15,9 @@ pub struct PipewireLink {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
     gtk::init()?;
+
     let graphview = Rc::new(RefCell::new(view::GraphView::new()));
 
     // Create the connection to the pipewire server and do an initial roundtrip before showing the view,

@@ -124,8 +124,7 @@ mod imp {
                     cr.curve_to(from_x + 75.0, from_y, to_x - 75.0, to_y, to_x, to_y);
                     cr.stroke();
                 } else {
-                    eprintln!("Could not get allocation of ports of link: {:?}", link);
-                    // FIXME: Log an info instead.
+                    log::warn!("Could not get allocation of ports of link: {:?}", link);
                 }
             }
 
@@ -220,9 +219,10 @@ impl GraphView {
             node.add_port(port_id, port);
         } else {
             // FIXME: Log this instead
-            eprintln!(
+            log::error!(
                 "Node with id {} not found when trying to add port with id {} to graph",
-                node_id, port_id
+                node_id,
+                port_id
             );
         }
     }

@@ -467,7 +467,9 @@ dependencies = [
 name = "graphui-rs"
 version = "0.0.1"
 dependencies = [
+ "env_logger",
  "gtk4",
+ "log",
  "pipewire",
 ]
 
