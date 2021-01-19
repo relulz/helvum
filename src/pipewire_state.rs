@@ -1,5 +1,6 @@
 use crate::{view, PipewireLink};
 
+use libspa::dict::ReadableDict;
 use pipewire::{
     port::Direction,
     registry::{GlobalObject, ObjectType},
