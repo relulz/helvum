@@ -40,12 +40,10 @@ pub struct PipewireState {
 
 impl PipewireState {
     pub fn new(graphview: Rc<RefCell<view::GraphView>>) -> Self {
-        let result = Self {
+        Self {
             graphview,
             items: HashMap::new(),
-        };
-
-        result
+        }
     }
 
     /// This function is called from the `PipewireConnection` struct responsible for updating this struct.
@@ -66,18 +64,20 @@ impl PipewireState {
 
     fn add_node(&mut self, node: GlobalObject) {
         // Update graph to contain the new node.
-        let node_widget = crate::view::Node::new(&format!(
-            "{}",
-            node.props
+        let node_widget = crate::view::Node::new(
+            &node
+                .props
                 .as_ref()
-                .map(|dict| String::from(
-                    dict.get("node.nick")
-                        .or(dict.get("node.description"))
-                        .or(dict.get("node.name"))
-                        .unwrap_or_default()
-                ))
-                .unwrap_or_default()
-        ));
+                .map(|dict| {
+                    String::from(
+                        dict.get("node.nick")
+                            .or_else(|| dict.get("node.description"))
+                            .or_else(|| dict.get("node.name"))
+                            .unwrap_or_default(),
+                    )
+                })
+                .unwrap_or_default(),
+        );
 
         // FIXME: This relies on the node being passed to us by the pipwire server before its port.
         let media_type = node
@@ -115,7 +115,7 @@ impl PipewireState {
     fn add_port(&mut self, port: GlobalObject) {
         // Update graph to contain the new port.
         let props = port.props.expect("Port object is missing properties");
-        let port_label = format!("{}", props.get("port.name").unwrap_or_default());
+        let port_label = props.get("port.name").unwrap_or_default().to_string();
         let node_id: u32 = props
             .get("node.id")
             .expect("Port has no node.id property!")

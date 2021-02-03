@@ -49,7 +49,7 @@ impl PipewireConnection {
             .register();
 
         Ok(Self {
-            mainloop: mainloop,
+            mainloop,
             _context: context,
             core,
             _registry: registry,

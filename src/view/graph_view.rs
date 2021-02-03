@@ -273,3 +273,9 @@ impl GraphView {
         self.queue_draw();
     }
 }
+
+impl Default for GraphView {
+    fn default() -> Self {
+        Self::new()
+    }
+}

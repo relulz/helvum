@@ -135,11 +135,7 @@ impl Node {
 
     pub fn get_port(&self, id: u32) -> Option<Rc<super::port::Port>> {
         let private = imp::Node::from_instance(self);
-        private
-            .ports
-            .borrow_mut()
-            .get(&id)
-            .map(|port_rc| port_rc.clone())
+        private.ports.borrow_mut().get(&id).cloned()
     }
 
     pub fn remove_port(&self, id: u32) {
