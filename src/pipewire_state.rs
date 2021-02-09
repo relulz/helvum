@@ -1,6 +1,8 @@
 use crate::{view, PipewireLink};
 
+use gtk::WidgetExt;
 use libspa::dict::ReadableDict;
+use log::warn;
 use pipewire::{
     port::Direction,
     registry::{GlobalObject, ObjectType},
@@ -8,9 +10,20 @@ use pipewire::{
 
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
+enum MediaType {
+    Audio,
+    Video,
+    Midi,
+}
+
 enum Item {
-    Node(view::Node),
-    Port { node_id: u32 },
+    Node {
+        widget: view::Node,
+        media_type: Option<MediaType>,
+    },
+    Port {
+        node_id: u32,
+    },
     Link,
 }
 
@@ -56,6 +69,7 @@ impl PipewireState {
         let node_widget = crate::view::Node::new(&format!(
             "{}",
             node.props
+                .as_ref()
                 .map(|dict| String::from(
                     dict.get("node.nick")
                         .or(dict.get("node.description"))
@@ -64,12 +78,38 @@ impl PipewireState {
                 ))
                 .unwrap_or_default()
         ));
+
+        // FIXME: This relies on the node being passed to us by the pipwire server before its port.
+        let media_type = node
+            .props
+            .map(|props| {
+                props.get("media.class").map(|class| {
+                    if class.contains("Audio") {
+                        Some(MediaType::Audio)
+                    } else if class.contains("Video") {
+                        Some(MediaType::Video)
+                    } else if class.contains("Midi") {
+                        Some(MediaType::Midi)
+                    } else {
+                        None
+                    }
+                })
+            })
+            .flatten()
+            .flatten();
+
         self.graphview
             .borrow_mut()
             .add_node(node.id, node_widget.clone());
 
         // Save the created widget so we can delete ports easier.
-        self.items.insert(node.id, Item::Node(node_widget));
+        self.items.insert(
+            node.id,
+            Item::Node {
+                widget: node_widget,
+                media_type,
+            },
+        );
     }
 
     fn add_port(&mut self, port: GlobalObject) {
@@ -91,6 +131,18 @@ impl PipewireState {
             },
         );
 
+        // Color the port accordingly to its media class.
+        if let Some(Item::Node { media_type, .. }) = self.items.get(&node_id) {
+            match media_type {
+                Some(MediaType::Audio) => new_port.widget.add_css_class("audio"),
+                Some(MediaType::Video) => new_port.widget.add_css_class("video"),
+                Some(MediaType::Midi) => new_port.widget.add_css_class("midi"),
+                None => {}
+            }
+        } else {
+            warn!("Node not found for Port {}", port.id);
+        }
+
         self.graphview
             .borrow_mut()
             .add_port_to_node(node_id, new_port.id, new_port);
@@ -100,6 +152,7 @@ impl PipewireState {
     }
 
     fn add_link(&mut self, link: GlobalObject) {
+        // FIXME: Links should be colored depending on the data they carry (video, audio, midi) like ports are.
         self.items.insert(link.id, Item::Link);
 
         // Update graph to contain the new link.
@@ -139,7 +192,7 @@ impl PipewireState {
     pub fn global_remove(&mut self, id: u32) {
         if let Some(item) = self.items.get(&id) {
             match item {
-                Item::Node(_) => self.remove_node(id),
+                Item::Node { .. } => self.remove_node(id),
                 Item::Port { node_id } => self.remove_port(id, *node_id),
                 Item::Link => self.remove_link(id),
             }
@@ -158,8 +211,8 @@ impl PipewireState {
     }
 
     fn remove_port(&self, id: u32, node_id: u32) {
-        if let Some(Item::Node(node)) = self.items.get(&node_id) {
-            node.remove_port(id);
+        if let Some(Item::Node { widget, .. }) = self.items.get(&node_id) {
+            widget.remove_port(id);
         }
     }
 

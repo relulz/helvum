@@ -1,6 +1,6 @@
 /// Graphical representation of a pipewire port.
 pub struct Port {
-    pub(super) widget: gtk::Button,
+    pub widget: gtk::Button,
     pub id: u32,
     pub direction: pipewire::port::Direction,
 }

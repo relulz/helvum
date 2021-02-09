@@ -6,6 +6,24 @@ use gtk::prelude::*;
 
 use std::{cell::RefCell, rc::Rc};
 
+// FIXME: This should be in its own .css file.
+static STYLE: &str = "
+.audio {
+    background: rgb(50,100,240);
+	color: black;
+}
+
+.video {
+    background: rgb(200,200,0);
+	color: black;
+}
+
+.midi {
+    background: rgb(200,0,50);
+    color: black;
+}
+";
+
 #[derive(Debug)]
 pub struct PipewireLink {
     pub node_from: u32,
@@ -35,6 +53,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = gtk::Application::new(Some("org.freedesktop.pipewire.graphui"), Default::default())
         .expect("Application creation failed");
+
+    app.connect_startup(|_| {
+        // Load CSS from the STYLE variable.
+        let provider = gtk::CssProvider::new();
+        provider.load_from_data(STYLE.as_bytes());
+        gtk::StyleContext::add_provider_for_display(
+            &gtk::gdk::Display::get_default().expect("Error initializing gtk css provider."),
+            &provider,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+    });
 
     app.connect_activate(move |app| {
         let scrollwindow = gtk::ScrolledWindowBuilder::new()
