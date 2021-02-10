@@ -257,7 +257,8 @@ impl GraphView {
             .expect("Failed to cast to FixedLayout");
 
         let transform = gsk::Transform::new()
-            .translate(&graphene::Point::new(x, y))
+            // Nodes should not be able to be dragged out of the view, so we use `max(coordinate, 0.0)` to prevent that.
+            .translate(&graphene::Point::new(f32::max(x, 0.0), f32::max(y, 0.0)))
             .unwrap();
 
         layout_manager
