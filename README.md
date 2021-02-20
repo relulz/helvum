@@ -13,7 +13,8 @@ More suggestions are welcome!
 For compilation, you will need:
 
 - An up-to-date rust toolchain
-- gtk-4.0 and pipewire-0.3 development headers
+- `libclang-3.7` or higher
+- `gtk-4.0` and `pipewire-0.3` development headers
 
 To compile, run
 
