@@ -51,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Continue(true)
     });
 
-    let app = gtk::Application::new(Some("org.freedesktop.pipewire.graphui"), Default::default())
+    let app = gtk::Application::new(Some("org.freedesktop.ryuukyu.helvum"), Default::default())
         .expect("Application creation failed");
 
     app.connect_startup(|_| {
@@ -73,7 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .application(app)
             .default_width(1280)
             .default_height(720)
-            .title("Pipewire Graph Editor")
+            .title("Helvum - Pipewire Patchbay")
             .child(&scrollwindow)
             .build();
         window

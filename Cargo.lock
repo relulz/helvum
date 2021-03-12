@@ -420,17 +420,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "graphui"
-version = "0.1.0"
-dependencies = [
- "env_logger",
- "gtk4",
- "libspa",
- "log",
- "pipewire",
-]
-
-[[package]]
 name = "gsk4"
 version = "0.1.0"
 source = "git+https://github.com/gtk-rs/gtk4-rs/#0f06879b6c4fb1870112d613e5837e8befea0d02"
@@ -522,6 +511,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "87cbf45460356b7deeb5e3415b5563308c0a9b057c85e12b06ad551f98d0a6ac"
 dependencies = [
  "unicode-segmentation",
+]
+
+[[package]]
+name = "helvum"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "gtk4",
+ "libspa",
+ "log",
+ "pipewire",
 ]
 
 [[package]]
