@@ -3,6 +3,12 @@ name = "helvum"
 version = "0.1.0"
 authors = ["Tom A. Wagner <tom.a.wagner@protonmail.com>"]
 edition = "2018"
+license = "GPL-3.0-only"
+description = "A GTK patchbay for pipewire"
+repository = "https://gitlab.freedesktop.org/ryuukyu/helvum"
+readme = "README.md"
+keywords = ["pipewire", "gtk", "patchbay", "gui", "utility"]
+categories = ["gui", "multimedia"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
