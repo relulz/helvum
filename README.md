@@ -1,11 +1,10 @@
-A graphical interface for viewing the current pipewire graph (name pending, suggestions welcome), inspired by the JACK tool [catia](https://kx.studio/Applications:Catia).
+Helvum is a GTK-based patchbay for pipewire, inspired by the JACK tool [catia](https://kx.studio/Applications:Catia).
 
 ![Screenshot](screenshot.png)
 
 # Features planned
 
 - Allow creation of links from one port to another.
-- Color ports and links based on whether they carry audio, video or midi data.
 
 More suggestions are welcome!
 
