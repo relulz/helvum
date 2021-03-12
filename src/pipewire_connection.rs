@@ -30,7 +30,7 @@ impl PipewireConnection {
             pw::Context::new(&mainloop).map_err(|_| "Failed to create pipewire context")?;
         let core = Rc::new(
             context
-                .connect()
+                .connect(None)
                 .map_err(|_| "Failed to connect to pipewire core")?,
         );
         let registry = core.get_registry();

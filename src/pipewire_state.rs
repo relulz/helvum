@@ -3,10 +3,7 @@ use crate::{view, PipewireLink};
 use gtk::WidgetExt;
 use libspa::dict::ReadableDict;
 use log::warn;
-use pipewire::{
-    port::Direction,
-    registry::{GlobalObject, ObjectType},
-};
+use pipewire::{port::Direction, registry::GlobalObject, types::ObjectType};
 
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
