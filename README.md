@@ -20,4 +20,4 @@ To compile, run
     $ cargo build --release
 
 in the repository root.
-The resulting binary will be at `target/release/graphui`.
+The resulting binary will be at `target/release/helvum`.
