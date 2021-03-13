@@ -11,32 +11,22 @@ mod imp {
 
     use std::{cell::RefCell, rc::Rc};
 
+    #[derive(Default)]
     pub struct GraphView {
         pub(super) nodes: RefCell<HashMap<u32, Node>>,
         pub(super) links: RefCell<HashMap<u32, crate::PipewireLink>>,
         pub(super) dragged: Rc<RefCell<Option<gtk::Widget>>>,
     }
 
+    #[glib::object_subclass]
     impl ObjectSubclass for GraphView {
         const NAME: &'static str = "GraphView";
         type Type = super::GraphView;
         type ParentType = gtk::Widget;
-        type Instance = glib::subclass::simple::InstanceStruct<Self>;
-        type Class = glib::subclass::simple::ClassStruct<Self>;
-
-        glib::object_subclass!();
 
         fn class_init(klass: &mut Self::Class) {
             // The layout manager determines how child widgets are laid out.
             klass.set_layout_manager_type::<gtk::FixedLayout>();
-        }
-
-        fn new() -> Self {
-            Self {
-                nodes: RefCell::new(HashMap::new()),
-                links: RefCell::new(HashMap::new()),
-                dragged: Rc::new(RefCell::new(None)),
-            }
         }
     }
 

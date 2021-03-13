@@ -18,14 +18,11 @@ mod imp {
         pub(super) num_ports_out: Cell<u32>,
     }
 
+    #[glib::object_subclass]
     impl ObjectSubclass for Node {
         const NAME: &'static str = "Node";
         type Type = super::Node;
         type ParentType = gtk::Widget;
-        type Instance = glib::subclass::simple::InstanceStruct<Self>;
-        type Class = glib::subclass::simple::ClassStruct<Self>;
-
-        glib::object_subclass!();
 
         fn class_init(klass: &mut Self::Class) {
             klass.set_layout_manager_type::<gtk::BinLayout>();
