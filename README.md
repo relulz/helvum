@@ -8,6 +8,10 @@ Helvum is a GTK-based patchbay for pipewire, inspired by the JACK tool [catia](h
 
 More suggestions are welcome!
 
+# Distribution packages
+
+- ArchLinux: [aur/helvum-git](https://aur.archlinux.org/packages/helvum-git)
+
 # Building
 For compilation, you will need:
 
