@@ -2,6 +2,7 @@ mod pipewire_connection;
 mod pipewire_state;
 mod view;
 
+use gtk::glib::{self, clone};
 use gtk::prelude::*;
 
 use std::{cell::RefCell, rc::Rc};
@@ -81,6 +82,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .set_property_gtk_application_prefer_dark_theme(true);
         window.show();
     });
+
+    let quit = gtk::gio::SimpleAction::new("quit", None);
+    quit.connect_activate(clone!(@weak app => move |_, _| {
+        app.quit();
+    }));
+    app.set_accels_for_action("app.quit", &["<Control>Q"]);
+    app.add_action(&quit);
 
     app.run(&std::env::args().collect::<Vec<_>>());
 
