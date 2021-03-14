@@ -1,0 +1,75 @@
+include:
+  - project: 'freedesktop/ci-templates'             # the project to include from
+    ref: '98f557799157ebb0395cf11d40f01f61fbbace20' # git ref of that project
+    file: '/templates/fedora.yml'                   # the actual file to include
+
+stages:
+  - prepare
+  - lint
+  - test
+  - extras
+
+variables:
+  FDO_UPSTREAM_REPO: 'ryuukyu/helvum'
+
+# Version and tag for our current container
+.fedora:
+  variables:
+    FDO_DISTRIBUTION_VERSION: '33'
+    # Update this to trigger a container rebuild
+    FDO_DISTRIBUTION_TAG: '2021-03-14.0'
+
+build-fedora-container:
+  extends:
+  - .fedora                            # our template job above
+  - .fdo.container-build@fedora@x86_64 # the CI template
+  stage: prepare
+  variables:
+    # clang-devel: required by rust bindgen
+    FDO_DISTRIBUTION_PACKAGES: >-
+      rust
+      cargo
+      rustfmt
+      clippy
+      pipewire-devel
+      gtk4-devel
+      clang-devel
+
+rustfmt:
+  extends:
+    - .fedora
+    - .fdo.distribution-image@fedora
+  stage: lint
+  script:
+    - cargo fmt --version
+    - cargo fmt -- --color=always --check
+
+test-stable:
+  extends:
+    - .fedora
+    - .fdo.distribution-image@fedora
+  stage: test
+  script:
+    - rustc --version
+    - cargo build --color=always --all-targets
+    - cargo test --color=always
+
+rustdoc:
+  extends:
+    - .fedora
+    - .fdo.distribution-image@fedora
+  stage: extras
+  variables:
+    RUSTDOCFLAGS: '-Dwarnings'
+  script:
+    - rustdoc --version
+    - cargo doc --no-deps
+
+clippy:
+  extends:
+    - .fedora
+    - .fdo.distribution-image@fedora
+  stage: extras
+  script:
+    - cargo clippy --version
+    - cargo clippy --color=always --all-targets -- -D warnings
