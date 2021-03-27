@@ -1,7 +1,7 @@
 use crate::{view, PipewireLink};
 
 use gtk::WidgetExt;
-use libspa::dict::ReadableDict;
+use libspa::{dict::ReadableDict, ForeignDict};
 use log::warn;
 use pipewire::{port::Direction, registry::GlobalObject, types::ObjectType};
 
@@ -44,7 +44,7 @@ impl PipewireState {
     }
 
     /// This function is called from the `PipewireConnection` struct responsible for updating this struct.
-    pub fn global(&mut self, global: GlobalObject) {
+    pub fn global(&mut self, global: &GlobalObject<ForeignDict>) {
         match global.type_ {
             ObjectType::Node => {
                 self.add_node(global);
@@ -59,7 +59,7 @@ impl PipewireState {
         }
     }
 
-    fn add_node(&mut self, node: GlobalObject) {
+    fn add_node(&mut self, node: &GlobalObject<ForeignDict>) {
         // Update graph to contain the new node.
         let node_widget = crate::view::Node::new(
             &node
@@ -79,6 +79,7 @@ impl PipewireState {
         // FIXME: This relies on the node being passed to us by the pipwire server before its port.
         let media_type = node
             .props
+            .as_ref()
             .map(|props| {
                 props.get("media.class").map(|class| {
                     if class.contains("Audio") {
@@ -109,9 +110,12 @@ impl PipewireState {
         );
     }
 
-    fn add_port(&mut self, port: GlobalObject) {
+    fn add_port(&mut self, port: &GlobalObject<ForeignDict>) {
         // Update graph to contain the new port.
-        let props = port.props.expect("Port object is missing properties");
+        let props = port
+            .props
+            .as_ref()
+            .expect("Port object is missing properties");
         let port_label = props.get("port.name").unwrap_or_default().to_string();
         let node_id: u32 = props
             .get("node.id")
@@ -148,12 +152,15 @@ impl PipewireState {
         self.items.insert(port.id, Item::Port { node_id });
     }
 
-    fn add_link(&mut self, link: GlobalObject) {
+    fn add_link(&mut self, link: &GlobalObject<ForeignDict>) {
         // FIXME: Links should be colored depending on the data they carry (video, audio, midi) like ports are.
         self.items.insert(link.id, Item::Link);
 
         // Update graph to contain the new link.
-        let props = link.props.expect("Link object is missing properties");
+        let props = link
+            .props
+            .as_ref()
+            .expect("Link object is missing properties");
         let input_node: u32 = props
             .get("link.input.node")
             .expect("Link has no link.input.node property")

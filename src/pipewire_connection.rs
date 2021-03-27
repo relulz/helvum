@@ -33,7 +33,9 @@ impl PipewireConnection {
                 .connect(None)
                 .map_err(|_| "Failed to connect to pipewire core")?,
         );
-        let registry = core.get_registry();
+        let registry = core
+            .get_registry()
+            .map_err(|_| "Failed to get pipewire registry")?;
 
         let state = Rc::new(RefCell::new(state));
 
@@ -61,7 +63,10 @@ impl PipewireConnection {
     /// Receive all events from the pipewire server, sending them to the `pipewire_state` struct for processing.
     pub fn roundtrip(&self) {
         let done = Rc::new(Cell::new(false));
-        let pending = self.core.sync(0);
+        let pending = self
+            .core
+            .sync(0)
+            .expect("Failed to trigger core sync event");
 
         let done_clone = done.clone();
         let loop_clone = self.mainloop.clone();
