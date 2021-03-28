@@ -1,11 +1,9 @@
+mod controller;
 mod pipewire_connection;
-mod pipewire_state;
 mod view;
 
 use gtk::glib::{self, clone};
 use gtk::prelude::*;
-
-use std::{cell::RefCell, rc::Rc};
 
 // FIXME: This should be in its own .css file.
 static STYLE: &str = "
@@ -37,18 +35,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     gtk::init()?;
 
-    let graphview = Rc::new(RefCell::new(view::GraphView::new()));
+    let graphview = view::GraphView::new();
 
-    // Create the connection to the pipewire server and do an initial roundtrip before showing the view,
+    let pw_con = pipewire_connection::PipewireConnection::new()?;
+    let _controller = controller::Controller::new(graphview.clone(), pw_con.clone());
+
+    // Do an initial roundtrip before showing the view,
     // so that the graph is already populated when the window opens.
-    let pw_con = pipewire_connection::PipewireConnection::new(pipewire_state::PipewireState::new(
-        graphview.clone(),
-    ))
-    .expect("Failed to initialize pipewire connection");
-    pw_con.roundtrip();
+    pw_con.borrow().roundtrip();
     // From now on, call roundtrip() every second.
-    gtk::glib::timeout_add_seconds_local(1, move || {
-        pw_con.roundtrip();
+    glib::timeout_add_seconds_local(1, move || {
+        pw_con.borrow().roundtrip();
         Continue(true)
     });
 
@@ -67,9 +64,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     app.connect_activate(move |app| {
-        let scrollwindow = gtk::ScrolledWindowBuilder::new()
-            .child(&*graphview.borrow())
-            .build();
+        let scrollwindow = gtk::ScrolledWindowBuilder::new().child(&graphview).build();
         let window = gtk::ApplicationWindowBuilder::new()
             .application(app)
             .default_width(1280)

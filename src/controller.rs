@@ -1,50 +1,96 @@
-use crate::{view, PipewireLink};
-
-use gtk::WidgetExt;
-use libspa::{dict::ReadableDict, ForeignDict};
-use log::warn;
-use pipewire::{port::Direction, registry::GlobalObject, types::ObjectType};
-
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-enum MediaType {
+use gtk::{
+    glib::{self, clone},
+    prelude::*,
+};
+use libspa::{ForeignDict, ReadableDict};
+use log::{info, warn};
+use pipewire::{port::Direction, registry::GlobalObject, types::ObjectType};
+
+use crate::{pipewire_connection::PipewireConnection, view};
+
+pub enum MediaType {
     Audio,
     Video,
     Midi,
 }
 
+/// Any pipewire item we need to keep track of.
+/// These will be saved in the controllers `state` map associated with their id.
 enum Item {
     Node {
+        // Keep track of the widget to easily remove ports on it later.
         widget: view::Node,
+        // Keep track of the nodes media type to color ports on it.
         media_type: Option<MediaType>,
     },
     Port {
+        // Save the id of the node this is on so we can remove the port from it
+        // when it is deleted.
         node_id: u32,
     },
+    // We don't need to memorize anything about links right now, but we need to
+    // be able to find out an id is a link.
     Link,
 }
 
-/// This struct stores the state of the pipewire graph.
+/// Mediater between the pipewire connection and the view.
 ///
-/// It receives updates from the [`PipewireConnection`](crate::pipewire_connection::PipewireConnection)
-/// responsible for updating it and applies them to its internal state.
+/// The Controller is the central piece of the architecture.
+/// It manages the view, receives updates from the pipewire connection
+/// and relays changes the user made to the pipewire connection.
 ///
-/// It also keeps the view updated to always reflect this internal state.
-pub struct PipewireState {
-    graphview: Rc<RefCell<view::GraphView>>,
-    items: HashMap<u32, Item>,
+/// It also keeps and manages a state object that contains the current state of objects present on the remote.
+pub struct Controller {
+    con: Rc<RefCell<PipewireConnection>>,
+    state: HashMap<u32, Item>,
+    view: view::GraphView,
 }
 
-impl PipewireState {
-    pub fn new(graphview: Rc<RefCell<view::GraphView>>) -> Self {
-        Self {
-            graphview,
-            items: HashMap::new(),
-        }
+impl Controller {
+    /// Create a new controller.
+    ///
+    /// This function returns an `Rc`, because `Weak` references are needed inside closures the controller
+    /// passes to other components.
+    ///
+    /// The returned `Rc` will be the only strong reference kept to the controller, so dropping the `Rc`
+    /// will also drop the controller, unless the `Rc` is cloned outside of this function.
+    pub(super) fn new(
+        view: view::GraphView,
+        con: Rc<RefCell<PipewireConnection>>,
+    ) -> Rc<RefCell<Controller>> {
+        let result = Rc::new(RefCell::new(Controller {
+            con,
+            view,
+            state: HashMap::new(),
+        }));
+
+        result
+            .borrow()
+            .con
+            .borrow_mut()
+            .on_global_add(Some(Box::new(
+                clone!(@weak result as this => move |global| {
+                    this.borrow_mut().global_add(global);
+                }),
+            )));
+        result
+            .borrow()
+            .con
+            .borrow_mut()
+            .on_global_remove(Some(Box::new(clone!(@weak result as this => move |id| {
+                    this.borrow_mut().global_remove(id);
+            }))));
+
+        result
     }
 
-    /// This function is called from the `PipewireConnection` struct responsible for updating this struct.
-    pub fn global(&mut self, global: &GlobalObject<ForeignDict>) {
+    /// Handle a new global object being added.
+    /// Relevant objects are displayed to the user and/or stored to the state.
+    ///
+    /// It is called from the `PipewireConnection` via callback.
+    fn global_add(&mut self, global: &GlobalObject<ForeignDict>) {
         match global.type_ {
             ObjectType::Node => {
                 self.add_node(global);
@@ -59,7 +105,10 @@ impl PipewireState {
         }
     }
 
+    /// Handle a node object being added.
     fn add_node(&mut self, node: &GlobalObject<ForeignDict>) {
+        info!("Adding node to graph: id {}", node.id);
+
         // Update graph to contain the new node.
         let node_widget = crate::view::Node::new(
             &node
@@ -96,12 +145,9 @@ impl PipewireState {
             .flatten()
             .flatten();
 
-        self.graphview
-            .borrow_mut()
-            .add_node(node.id, node_widget.clone());
+        self.view.add_node(node.id, node_widget.clone());
 
-        // Save the created widget so we can delete ports easier.
-        self.items.insert(
+        self.state.insert(
             node.id,
             Item::Node {
                 widget: node_widget,
@@ -110,7 +156,10 @@ impl PipewireState {
         );
     }
 
+    /// Handle a port object being added.
     fn add_port(&mut self, port: &GlobalObject<ForeignDict>) {
+        info!("Adding port to graph: id {}", port.id);
+
         // Update graph to contain the new port.
         let props = port
             .props
@@ -133,7 +182,7 @@ impl PipewireState {
         );
 
         // Color the port accordingly to its media class.
-        if let Some(Item::Node { media_type, .. }) = self.items.get(&node_id) {
+        if let Some(Item::Node { media_type, .. }) = self.state.get(&node_id) {
             match media_type {
                 Some(MediaType::Audio) => new_port.widget.add_css_class("audio"),
                 Some(MediaType::Video) => new_port.widget.add_css_class("video"),
@@ -144,17 +193,19 @@ impl PipewireState {
             warn!("Node not found for Port {}", port.id);
         }
 
-        self.graphview
-            .borrow_mut()
-            .add_port_to_node(node_id, new_port.id, new_port);
+        self.view.add_port_to_node(node_id, new_port.id, new_port);
 
         // Save node_id so we can delete this port easily.
-        self.items.insert(port.id, Item::Port { node_id });
+        self.state.insert(port.id, Item::Port { node_id });
     }
 
+    /// Handle a link object being added.
     fn add_link(&mut self, link: &GlobalObject<ForeignDict>) {
+        info!("Adding link to graph: id {}", link.id);
+
         // FIXME: Links should be colored depending on the data they carry (video, audio, midi) like ports are.
-        self.items.insert(link.id, Item::Link);
+
+        self.state.insert(link.id, Item::Link);
 
         // Update graph to contain the new link.
         let props = link
@@ -181,9 +232,9 @@ impl PipewireState {
             .expect("Link has no link.output.port property")
             .parse()
             .expect("Could not parse link.output.port property");
-        self.graphview.borrow_mut().add_link(
+        self.view.add_link(
             link.id,
-            PipewireLink {
+            crate::PipewireLink {
                 node_from: output_node,
                 port_from: output_port,
                 node_to: input_node,
@@ -192,18 +243,19 @@ impl PipewireState {
         );
     }
 
-    /// This function is called from the `PipewireConnection` struct responsible for updating this struct.
-    pub fn global_remove(&mut self, id: u32) {
-        if let Some(item) = self.items.get(&id) {
+    /// Handle a globalobject being removed.
+    /// Relevant objects are removed from the view and/or the state.
+    ///
+    /// This is called from the `PipewireConnection` via callback.
+    fn global_remove(&mut self, id: u32) {
+        if let Some(item) = self.state.remove(&id) {
             match item {
                 Item::Node { .. } => self.remove_node(id),
-                Item::Port { node_id } => self.remove_port(id, *node_id),
+                Item::Port { node_id } => self.remove_port(id, node_id),
                 Item::Link => self.remove_link(id),
             }
-
-            self.items.remove(&id);
         } else {
-            log::warn!(
+            warn!(
                 "Attempted to remove item with id {} that is not saved in state",
                 id
             );
@@ -211,16 +263,22 @@ impl PipewireState {
     }
 
     fn remove_node(&self, id: u32) {
-        self.graphview.borrow().remove_node(id);
+        info!("Removing node from graph: id {}", id);
+
+        self.view.remove_node(id);
     }
 
     fn remove_port(&self, id: u32, node_id: u32) {
-        if let Some(Item::Node { widget, .. }) = self.items.get(&node_id) {
+        info!("Removing port from graph: id {}, node_id: {}", id, node_id);
+
+        if let Some(Item::Node { widget, .. }) = self.state.get(&node_id) {
             widget.remove_port(id);
         }
     }
 
     fn remove_link(&self, id: u32) {
-        self.graphview.borrow().remove_link(id);
+        info!("Removing link from graph: id {}", id);
+
+        self.view.remove_link(id);
     }
 }
