@@ -1,15 +1,13 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use gtk::{
-    glib::{self, clone},
-    prelude::*,
-};
+use gtk::glib::{self, clone};
 use libspa::{ForeignDict, ReadableDict};
 use log::{info, warn};
 use pipewire::{port::Direction, registry::GlobalObject, types::ObjectType};
 
 use crate::{pipewire_connection::PipewireConnection, view};
 
+#[derive(Copy, Clone)]
 pub enum MediaType {
     Audio,
     Video,
@@ -171,6 +169,15 @@ impl Controller {
             .expect("Port has no node.id property!")
             .parse()
             .expect("Could not parse node.id property");
+
+        // Find out the nodes media type so that the port can be colored.
+        let media_type = if let Some(Item::Node { media_type, .. }) = self.state.get(&node_id) {
+            media_type.to_owned()
+        } else {
+            warn!("Node not found for Port {}", port.id);
+            None
+        };
+
         let new_port = crate::view::port::Port::new(
             port.id,
             &port_label,
@@ -179,19 +186,8 @@ impl Controller {
             } else {
                 Direction::Output
             },
+            media_type,
         );
-
-        // Color the port accordingly to its media class.
-        if let Some(Item::Node { media_type, .. }) = self.state.get(&node_id) {
-            match media_type {
-                Some(MediaType::Audio) => new_port.widget.add_css_class("audio"),
-                Some(MediaType::Video) => new_port.widget.add_css_class("video"),
-                Some(MediaType::Midi) => new_port.widget.add_css_class("midi"),
-                None => {}
-            }
-        } else {
-            warn!("Node not found for Port {}", port.id);
-        }
 
         self.view.add_port_to_node(node_id, new_port.id, new_port);
 
