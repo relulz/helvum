@@ -202,7 +202,7 @@ impl GraphView {
         }
     }
 
-    pub fn add_port_to_node(&self, node_id: u32, port_id: u32, port: crate::view::port::Port) {
+    pub fn add_port(&self, node_id: u32, port_id: u32, port: crate::view::port::Port) {
         let private = imp::GraphView::from_instance(self);
 
         if let Some(node) = private.nodes.borrow_mut().get_mut(&node_id) {
@@ -214,6 +214,14 @@ impl GraphView {
                 node_id,
                 port_id
             );
+        }
+    }
+
+    pub fn remove_port(&self, id: u32, node_id: u32) {
+        let private = imp::GraphView::from_instance(self);
+        let nodes = private.nodes.borrow();
+        if let Some(node) = nodes.get(&node_id) {
+            node.remove_port(id);
         }
     }
 
@@ -235,11 +243,11 @@ impl GraphView {
         self.queue_draw();
     }
 
-    pub fn set_dragged(&self, widget: Option<gtk::Widget>) {
+    pub(super) fn set_dragged(&self, widget: Option<gtk::Widget>) {
         *imp::GraphView::from_instance(self).dragged.borrow_mut() = widget;
     }
 
-    pub fn move_node(&self, node: &gtk::Widget, x: f32, y: f32) {
+    pub(super) fn move_node(&self, node: &gtk::Widget, x: f32, y: f32) {
         let layout_manager = self
             .get_layout_manager()
             .expect("Failed to get layout manager")

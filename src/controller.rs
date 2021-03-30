@@ -19,7 +19,7 @@ pub enum MediaType {
 enum Item {
     Node {
         // Keep track of the widget to easily remove ports on it later.
-        widget: view::Node,
+        // widget: view::Node,
         // Keep track of the nodes media type to color ports on it.
         media_type: Option<MediaType>,
     },
@@ -43,7 +43,7 @@ enum Item {
 pub struct Controller {
     con: Rc<RefCell<PipewireConnection>>,
     state: HashMap<u32, Item>,
-    view: view::GraphView,
+    view: Rc<view::View>,
 }
 
 impl Controller {
@@ -55,7 +55,7 @@ impl Controller {
     /// The returned `Rc` will be the only strong reference kept to the controller, so dropping the `Rc`
     /// will also drop the controller, unless the `Rc` is cloned outside of this function.
     pub(super) fn new(
-        view: view::GraphView,
+        view: Rc<view::View>,
         con: Rc<RefCell<PipewireConnection>>,
     ) -> Rc<RefCell<Controller>> {
         let result = Rc::new(RefCell::new(Controller {
@@ -107,21 +107,19 @@ impl Controller {
     fn add_node(&mut self, node: &GlobalObject<ForeignDict>) {
         info!("Adding node to graph: id {}", node.id);
 
-        // Update graph to contain the new node.
-        let node_widget = crate::view::Node::new(
-            &node
-                .props
-                .as_ref()
-                .map(|dict| {
-                    String::from(
-                        dict.get("node.nick")
-                            .or_else(|| dict.get("node.description"))
-                            .or_else(|| dict.get("node.name"))
-                            .unwrap_or_default(),
-                    )
-                })
-                .unwrap_or_default(),
-        );
+        // Get the nicest possible name for the node, using a fallback chain of possible name attributes.
+        let node_name = &node
+            .props
+            .as_ref()
+            .map(|dict| {
+                String::from(
+                    dict.get("node.nick")
+                        .or_else(|| dict.get("node.description"))
+                        .or_else(|| dict.get("node.name"))
+                        .unwrap_or_default(),
+                )
+            })
+            .unwrap_or_default();
 
         // FIXME: This relies on the node being passed to us by the pipwire server before its port.
         let media_type = node
@@ -143,12 +141,12 @@ impl Controller {
             .flatten()
             .flatten();
 
-        self.view.add_node(node.id, node_widget.clone());
+        self.view.add_node(node.id, node_name);
 
         self.state.insert(
             node.id,
             Item::Node {
-                widget: node_widget,
+                // widget: node_widget,
                 media_type,
             },
         );
@@ -178,7 +176,8 @@ impl Controller {
             None
         };
 
-        let new_port = crate::view::port::Port::new(
+        self.view.add_port(
+            node_id,
             port.id,
             &port_label,
             if matches!(props.get("port.direction"), Some("in")) {
@@ -188,8 +187,6 @@ impl Controller {
             },
             media_type,
         );
-
-        self.view.add_port_to_node(node_id, new_port.id, new_port);
 
         // Save node_id so we can delete this port easily.
         self.state.insert(port.id, Item::Port { node_id });
@@ -246,9 +243,18 @@ impl Controller {
     fn global_remove(&mut self, id: u32) {
         if let Some(item) = self.state.remove(&id) {
             match item {
-                Item::Node { .. } => self.remove_node(id),
-                Item::Port { node_id } => self.remove_port(id, node_id),
-                Item::Link => self.remove_link(id),
+                Item::Node { .. } => {
+                    info!("Removing node from graph: id {}", id);
+                    self.view.remove_node(id);
+                }
+                Item::Port { node_id } => {
+                    info!("Removing port from graph: id {}, node_id: {}", id, node_id);
+                    self.view.remove_port(id, node_id);
+                }
+                Item::Link => {
+                    info!("Removing link from graph: id {}", id);
+                    self.view.remove_link(id);
+                }
             }
         } else {
             warn!(
@@ -256,25 +262,5 @@ impl Controller {
                 id
             );
         }
-    }
-
-    fn remove_node(&self, id: u32) {
-        info!("Removing node from graph: id {}", id);
-
-        self.view.remove_node(id);
-    }
-
-    fn remove_port(&self, id: u32, node_id: u32) {
-        info!("Removing port from graph: id {}, node_id: {}", id, node_id);
-
-        if let Some(Item::Node { widget, .. }) = self.state.get(&node_id) {
-            widget.remove_port(id);
-        }
-    }
-
-    fn remove_link(&self, id: u32) {
-        info!("Removing link from graph: id {}", id);
-
-        self.view.remove_link(id);
     }
 }
