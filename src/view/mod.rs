@@ -80,6 +80,7 @@ impl View {
             window.show();
         }));
 
+        // Add <Control-Q> shortcut for quitting the application.
         let quit = gtk::gio::SimpleAction::new("quit", None);
         quit.connect_activate(clone!(@weak app => move |_, _| {
             app.quit();
@@ -90,16 +91,21 @@ impl View {
         Self { app, graphview }
     }
 
-    /// Run the view. This will enter a gtk event loop and remain in that until the application is quit by the user.
+    /// Run the view.
+    ///
+    /// This will enter a gtk event loop and remain in that
+    /// until the application is quit by the user.
     pub(super) fn run(&self) -> i32 {
         self.app.run(&std::env::args().collect::<Vec<_>>())
     }
 
+    /// Add a new node to the view.
     pub fn add_node(&self, id: u32, name: &str) {
         let node = crate::view::Node::new(name);
         self.graphview.add_node(id, node);
     }
 
+    /// Add a new port to the view.
     pub fn add_port(
         &self,
         node_id: u32,
@@ -112,18 +118,23 @@ impl View {
         self.graphview.add_port(node_id, port_id, port)
     }
 
+    /// Add a new link to the view.
     pub fn add_link(&self, id: u32, link: crate::PipewireLink) {
         self.graphview.add_link(id, link);
     }
 
+    /// Remove the node with the specified id from the view.
     pub fn remove_node(&self, id: u32) {
         self.graphview.remove_node(id);
     }
 
+    /// Remove the port with the id `id` from the node with the id `node_id`
+    /// from the view.
     pub fn remove_port(&self, id: u32, node_id: u32) {
         self.graphview.remove_port(id, node_id);
     }
 
+    /// Remove the link with the specified id from the view.
     pub fn remove_link(&self, id: u32) {
         self.graphview.remove_link(id);
     }
