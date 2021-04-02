@@ -108,21 +108,17 @@ impl Node {
     pub fn add_port(&mut self, id: u32, port: super::port::Port) {
         let private = imp::Node::from_instance(self);
 
-        match port.direction {
+        match port.direction() {
             Direction::Input => {
                 private
                     .grid
-                    .attach(&port.widget, 0, private.num_ports_in.get() as i32 + 1, 1, 1);
+                    .attach(&port, 0, private.num_ports_in.get() as i32 + 1, 1, 1);
                 private.num_ports_in.set(private.num_ports_in.get() + 1);
             }
             Direction::Output => {
-                private.grid.attach(
-                    &port.widget,
-                    1,
-                    private.num_ports_out.get() as i32 + 1,
-                    1,
-                    1,
-                );
+                private
+                    .grid
+                    .attach(&port, 1, private.num_ports_out.get() as i32 + 1, 1, 1);
                 private.num_ports_out.set(private.num_ports_out.get() + 1);
             }
         }
@@ -138,12 +134,12 @@ impl Node {
     pub fn remove_port(&self, id: u32) {
         let private = imp::Node::from_instance(self);
         if let Some(port) = private.ports.borrow_mut().remove(&id) {
-            match port.direction {
+            match port.direction() {
                 Direction::Input => private.num_ports_in.set(private.num_ports_in.get() - 1),
                 Direction::Output => private.num_ports_in.set(private.num_ports_out.get() - 1),
             }
 
-            port.widget.unparent();
+            port.unparent();
         }
     }
 }

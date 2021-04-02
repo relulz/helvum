@@ -137,7 +137,7 @@ mod imp {
             // For some reason, gtk4::WidgetExt::translate_coordinates gives me incorrect values,
             // so we manually calculate the needed offsets here.
 
-            let from_port = &nodes.get(&link.node_from)?.get_port(link.port_from)?.widget;
+            let from_port = &nodes.get(&link.node_from)?.get_port(link.port_from)?;
             let gtk::Allocation {
                 x: mut fx,
                 y: mut fy,
@@ -151,7 +151,7 @@ mod imp {
             fx += fnx + fw;
             fy += fny + (fh / 2);
 
-            let to_port = &nodes.get(&link.node_to)?.get_port(link.port_to)?.widget;
+            let to_port = &nodes.get(&link.node_to)?.get_port(link.port_to)?;
             let gtk::Allocation {
                 x: mut tx,
                 y: mut ty,
