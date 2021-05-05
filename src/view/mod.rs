@@ -13,7 +13,7 @@ use gtk::{
     glib::{self, clone},
     prelude::*,
 };
-use pipewire::port::Direction;
+use pipewire::spa::Direction;
 
 use crate::controller::MediaType;
 

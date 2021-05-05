@@ -1,9 +1,11 @@
 use gtk::{glib, prelude::*, subclass::prelude::*};
+use pipewire::spa::Direction;
 
 use crate::controller::MediaType;
 
 mod imp {
     use once_cell::unsync::OnceCell;
+    use pipewire::spa::Direction;
 
     use super::*;
 
@@ -11,7 +13,7 @@ mod imp {
     #[derive(Default)]
     pub struct Port {
         pub(super) id: OnceCell<u32>,
-        pub(super) direction: OnceCell<pipewire::port::Direction>,
+        pub(super) direction: OnceCell<Direction>,
     }
 
     #[glib::object_subclass]
@@ -32,12 +34,7 @@ glib::wrapper! {
 }
 
 impl Port {
-    pub fn new(
-        id: u32,
-        name: &str,
-        direction: pipewire::port::Direction,
-        media_type: Option<MediaType>,
-    ) -> Self {
+    pub fn new(id: u32, name: &str, direction: Direction, media_type: Option<MediaType>) -> Self {
         // Create the widget and initialize needed fields
         let res: Self = glib::Object::new(&[]).expect("Failed to create Port");
         let private = imp::Port::from_instance(&res);
@@ -60,7 +57,7 @@ impl Port {
         res
     }
 
-    pub fn direction(&self) -> &pipewire::port::Direction {
+    pub fn direction(&self) -> &Direction {
         let private = imp::Port::from_instance(self);
         private.direction.get().expect("Port direction is not set")
     }

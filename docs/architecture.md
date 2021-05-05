@@ -15,45 +15,41 @@ Helvum uses an architecture with the components laid out like this:
  Λ   ┆
  │<───── updates view
  │   ┆
- │   ┆<─────────────── notifies of user input (using callbacks)
- │   ┆
+ │   ┆<─ notifies of user input
+ │   ┆    (using signals)
  │   ┆
  │   ┆
  │   V           notifies of remote changes
-┌┴───────────┐        (using callbacks)      ┌─────────────────────┐
-│            │<╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤                     │
-│ Controller │                               │ Pipewire Connection │
-│            ├──────────────────────────────>│                     │
+┌┴───────────┐         via messages          ┌─────────────────────┐
+│            │<╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤      Seperate       │
+│ Controller │                               │      Pipewire       │
+│            ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌>│       Thread        │
 └┬───────────┘   Request changes to remote   └─────────────────────┘
- │                                                      Λ
+ │                      via messages                    Λ
  │                                                      ║
- │<─── updates/reads state            Communicates ───> ║
+ │<─── updates/reads state                              ║
  │                                                      ║
  V                                                      ║
 ┌───────┐                                               V
 │ State │                                   [ Remote Pipewire Server ]
 └───────┘
 ```
+The program is split between two threads, with most stuff happening inside the GTK thread.
+The GTK thread will sit in a GTK event processing loop, while the pipewire thread will sit in a
+pipewire event processing loop.
 
-The `Controller` struct is the centerpiece of this architecture.
-It registers callbacks with the `PipewireConnection` struct to get notified of any changes
-on the remote.
+The `Controller` struct inside the GTK thread is the centerpiece of this architecture.
+It communicates with the pipewire thread using two channels,
+where each message sent by one thread will trigger the loop of the other thread to invoke a callback
+with the received message.
 
-For each change it is notified of, it updates the view to reflect those changes, and additionally memorizes anything it might need later in the state.
+For each change on the remote pipewire server, the GTK thread is notified by the pipewire thread
+and updates the view to reflect those changes, and additionally memorizes anything it might need later in the state.
 
 Additionally, a user may also make changes using the view.
-For each change, the view notifies the controller by invoking callbacks registered on it.
+For each change, the view notifies the controller by emitting a matching signal.
 The controller will then request the pipewire connection to make those changes on the remote. \
 These changes will then be applied to the view like any other remote changes as explained above.
-
-## Control flow
-Most of the time, the program will sit idle in a gtk event processing loop.
-
-For any changes made using the view, gtk will emit an event on some widget, which will result in a closure on that widget being called, and in turn the controller being updated.
-
-On the other hand, we may receive updates from the remote pipewire server at any moment. \
-To process these changes, the gtk event loop is set up to trigger a roundtrip on the pipewire
-connection on an interval. During this roundtrip, we process all events sent to us by the pipewire server and notify the controller of them.
 
 # View Architecture
 TODO

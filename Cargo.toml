@@ -14,9 +14,7 @@ categories = ["gui", "multimedia"]
 
 [dependencies]
 gtk = { git = "https://github.com/gtk-rs/gtk4-rs/", package = "gtk4" }
-
-pipewire = "0.3.0"
-libspa = "0.3.0"
+pipewire = { git = "https://gitlab.freedesktop.org/pipewire/pipewire-rs", branch = "main" }
 
 log = "0.4.11"
 env_logger = "0.8.2"

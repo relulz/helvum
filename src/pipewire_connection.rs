@@ -1,123 +1,159 @@
-use gtk::glib::{self, clone};
-use libspa::ForeignDict;
-use log::trace;
-use once_cell::unsync::OnceCell;
-use pipewire as pw;
-use pw::registry::GlobalObject;
-
-use std::{
-    cell::{Cell, RefCell},
-    rc::Rc,
+use gtk::glib;
+use pipewire::{
+    prelude::*,
+    registry::GlobalObject,
+    spa::{Direction, ForeignDict},
+    types::ObjectType,
+    Context, MainLoop,
 };
 
-/// This struct is responsible for communication with the pipewire server.
-/// The owner of this struct can subscribe to notifications for globals added or removed.
-///
-/// It's `roundtrip` function must be called regularly to receive updates.
-pub struct PipewireConnection {
-    mainloop: pw::MainLoop,
-    _context: pw::Context<pw::MainLoop>,
-    core: pw::Core,
-    registry: pw::registry::Registry,
-    listeners: OnceCell<pw::registry::Listener>,
-    on_global_add: Option<Box<dyn Fn(&GlobalObject<ForeignDict>)>>,
-    on_global_remove: Option<Box<dyn Fn(u32)>>,
+use crate::{controller::MediaType, GtkMessage, PipewireMessage};
+
+/// The "main" function of the pipewire thread.
+pub(super) fn thread_main(
+    gtk_sender: glib::Sender<PipewireMessage>,
+    pw_receiver: pipewire::channel::Receiver<GtkMessage>,
+) {
+    let mainloop = MainLoop::new().expect("Failed to create mainloop");
+    let context = Context::new(&mainloop).expect("Failed to create context");
+    let core = context.connect(None).expect("Failed to connect to remote");
+    let registry = core.get_registry().expect("Failed to get registry");
+
+    let _receiver = pw_receiver.attach(&mainloop, {
+        let mainloop = mainloop.clone();
+        move |msg| match msg {
+            GtkMessage::Terminate => mainloop.quit(),
+        }
+    });
+
+    let _listener = registry
+        .add_listener_local()
+        .global({
+            let sender = gtk_sender.clone();
+            move |global| match global.type_ {
+                ObjectType::Node => handle_node(global, &sender),
+                ObjectType::Port => handle_port(global, &sender),
+                ObjectType::Link => handle_link(global, &sender),
+                _ => {
+                    // Other objects are not interesting to us
+                }
+            }
+        })
+        .global_remove(move |id| {
+            gtk_sender
+                .send(PipewireMessage::ObjectRemoved { id })
+                .expect("Failed to send message")
+        })
+        .register();
+
+    mainloop.run();
 }
 
-impl PipewireConnection {
-    /// Create a new Pipewire Connection.
-    ///
-    /// This returns an `Rc`, because weak references to the result are needed inside closures set up during creation.
-    pub fn new() -> Result<Rc<RefCell<Self>>, pw::Error> {
-        // Initialize pipewire lib and obtain needed pipewire objects.
-        pw::init();
-        let mainloop = pw::MainLoop::new()?;
-        let context = pw::Context::new(&mainloop)?;
-        let core = context.connect(None)?;
-        let registry = core.get_registry()?;
+/// Handle a new node being added
+fn handle_node(node: &GlobalObject<ForeignDict>, sender: &glib::Sender<PipewireMessage>) {
+    let props = node
+        .props
+        .as_ref()
+        .expect("Node object is missing properties");
 
-        let result = Rc::new(RefCell::new(Self {
-            mainloop,
-            _context: context,
-            core,
-            registry,
-            listeners: OnceCell::new(),
-            on_global_add: None,
-            on_global_remove: None,
-        }));
+    // Get the nicest possible name for the node, using a fallback chain of possible name attributes.
+    let name = String::from(
+        props
+            .get("node.nick")
+            .or_else(|| props.get("node.description"))
+            .or_else(|| props.get("node.name"))
+            .unwrap_or_default(),
+    );
 
-        // Notify state on globals added / removed
-        let listeners = result
-            .borrow()
-            .registry
-            .add_listener_local()
-            .global(clone!(@weak result as this => move |global| {
-                trace!("Global is added: {}", global.id);
-                let con = this.borrow();
-                if let Some(callback) = con.on_global_add.as_ref() {
-                    callback(global)
-                } else {
-                    trace!("No on_global_add callback registered");
-                }
-            }))
-            .global_remove(clone!(@weak result as this => move |id| {
-                trace!("Global is removed: {}", id);
-                let con = this.borrow();
-                if let Some(callback) = con.on_global_remove.as_ref() {
-                    callback(id)
-                } else {
-                    trace!("No on_global_remove callback registered");
-                }
-            }))
-            .register();
+    // FIXME: This relies on the node being passed to us by the pipwire server before its port.
+    let media_type = props
+        .get("media.class")
+        .map(|class| {
+            if class.contains("Audio") {
+                Some(MediaType::Audio)
+            } else if class.contains("Video") {
+                Some(MediaType::Video)
+            } else if class.contains("Midi") {
+                Some(MediaType::Midi)
+            } else {
+                None
+            }
+        })
+        .flatten();
 
-        // Makeshift `expect()`: listeners does not implement `Debug`, so we can not use `expect`.
-        assert!(
-            result.borrow_mut().listeners.set(listeners).is_ok(),
-            "PipewireConnection.listeners field already set"
-        );
+    sender
+        .send(PipewireMessage::NodeAdded {
+            id: node.id,
+            name,
+            media_type,
+        })
+        .expect("Failed to send message");
+}
 
-        Ok(result)
-    }
+/// Handle a new port being added
+fn handle_port(port: &GlobalObject<ForeignDict>, sender: &glib::Sender<PipewireMessage>) {
+    let props = port
+        .props
+        .as_ref()
+        .expect("Port object is missing properties");
+    let name = props.get("port.name").unwrap_or_default().to_string();
+    let node_id: u32 = props
+        .get("node.id")
+        .expect("Port has no node.id property!")
+        .parse()
+        .expect("Could not parse node.id property");
+    let direction = if matches!(props.get("port.direction"), Some("in")) {
+        Direction::Input
+    } else {
+        Direction::Output
+    };
 
-    /// Receive all events from the pipewire server, sending them to the `pipewire_state` struct for processing.
-    pub fn roundtrip(&self) {
-        trace!("Starting roundtrip");
+    sender
+        .send(PipewireMessage::PortAdded {
+            id: port.id,
+            node_id,
+            name,
+            direction,
+        })
+        .expect("Failed to send message");
+}
 
-        let done = Rc::new(Cell::new(false));
-        let pending = self
-            .core
-            .sync(0)
-            .expect("Failed to trigger core sync event");
+/// Handle a new link being added
+fn handle_link(link: &GlobalObject<ForeignDict>, sender: &glib::Sender<PipewireMessage>) {
+    let props = link
+        .props
+        .as_ref()
+        .expect("Link object is missing properties");
+    let node_from: u32 = props
+        .get("link.output.node")
+        .expect("Link has no link.input.node property")
+        .parse()
+        .expect("Could not parse link.input.node property");
+    let port_from: u32 = props
+        .get("link.output.port")
+        .expect("Link has no link.output.port property")
+        .parse()
+        .expect("Could not parse link.output.port property");
+    let node_to: u32 = props
+        .get("link.input.node")
+        .expect("Link has no link.input.node property")
+        .parse()
+        .expect("Could not parse link.input.node property");
+    let port_to: u32 = props
+        .get("link.input.port")
+        .expect("Link has no link.input.port property")
+        .parse()
+        .expect("Could not parse link.input.port property");
 
-        let done_clone = done.clone();
-        let loop_clone = self.mainloop.clone();
-
-        let _listener = self
-            .core
-            .add_listener_local()
-            .done(move |id, seq| {
-                if id == pw::PW_ID_CORE && seq == pending {
-                    done_clone.set(true);
-                    loop_clone.quit();
-                }
-            })
-            .register();
-
-        while !done.get() {
-            self.mainloop.run();
-        }
-
-        trace!("Roundtrip finished");
-    }
-
-    /// Set or unset a callback that gets called when a new global is added.
-    pub fn on_global_add(&mut self, callback: Option<Box<dyn Fn(&GlobalObject<ForeignDict>)>>) {
-        self.on_global_add = callback;
-    }
-
-    /// Set or unset a callback that gets called when a global is removed.
-    pub fn on_global_remove(&mut self, callback: Option<Box<dyn Fn(u32)>>) {
-        self.on_global_remove = callback;
-    }
+    sender
+        .send(PipewireMessage::LinkAdded {
+            id: link.id,
+            link: crate::PipewireLink {
+                node_from,
+                port_from,
+                node_to,
+                port_to,
+            },
+        })
+        .expect("Failed to send message");
 }

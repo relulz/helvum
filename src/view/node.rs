@@ -1,7 +1,7 @@
 use super::graph_view::GraphView;
 
 use gtk::{glib, prelude::*, subclass::prelude::*, WidgetExt};
-use pipewire::port::Direction;
+use pipewire::spa::Direction;
 
 use std::{collections::HashMap, rc::Rc};
 
