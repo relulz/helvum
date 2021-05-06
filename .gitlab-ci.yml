@@ -15,9 +15,9 @@ variables:
 # Version and tag for our current container
 .fedora:
   variables:
-    FDO_DISTRIBUTION_VERSION: '33'
+    FDO_DISTRIBUTION_VERSION: '34'
     # Update this to trigger a container rebuild
-    FDO_DISTRIBUTION_TAG: '2021-03-14.0'
+    FDO_DISTRIBUTION_TAG: '2021-05-06.0'
 
 build-fedora-container:
   extends:
