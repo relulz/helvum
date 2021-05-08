@@ -1,6 +1,11 @@
-use gtk::glib;
+use std::rc::Rc;
+
+use gtk::glib::{self, clone};
+use log::warn;
 use pipewire::{
+    link::Link,
     prelude::*,
+    properties,
     registry::GlobalObject,
     spa::{Direction, ForeignDict},
     types::ObjectType,
@@ -17,13 +22,31 @@ pub(super) fn thread_main(
     let mainloop = MainLoop::new().expect("Failed to create mainloop");
     let context = Context::new(&mainloop).expect("Failed to create context");
     let core = context.connect(None).expect("Failed to connect to remote");
-    let registry = core.get_registry().expect("Failed to get registry");
+    let registry = Rc::new(core.get_registry().expect("Failed to get registry"));
 
     let _receiver = pw_receiver.attach(&mainloop, {
         let mainloop = mainloop.clone();
-        move |msg| match msg {
+        clone!(@weak registry => move |msg| match msg {
+            GtkMessage::CreateLink(link) => {
+                if let Err(e) = core.create_object::<Link, _>(
+                    "link-factory",
+                    &properties! {
+                        "link.output.node" => link.node_from.to_string(),
+                        "link.output.port" => link.port_from.to_string(),
+                        "link.input.node" => link.node_to.to_string(),
+                        "link.input.port" => link.port_to.to_string(),
+                        "object.linger" => "1"
+                    },
+                ) {
+                    warn!("Failed to create link: {}", e);
+                }
+            }
+            GtkMessage::DestroyGlobal(id) => {
+                // FIXME: Handle error
+                registry.destroy_global(id);
+            }
             GtkMessage::Terminate => mainloop.quit(),
-        }
+        })
     });
 
     let _listener = registry

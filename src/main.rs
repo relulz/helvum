@@ -10,14 +10,18 @@ use gtk::{
 use pipewire::spa::Direction;
 
 /// Messages used GTK thread to command the pipewire thread.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum GtkMessage {
+    /// Create a new link.
+    CreateLink(PipewireLink),
+    /// Destroy the global with the specified id.
+    DestroyGlobal(u32),
     /// Quit the event loop and let the thread finish.
     Terminate,
 }
 
 /// Messages used pipewire thread to notify the GTK thread.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum PipewireMessage {
     /// A new node has appeared.
     NodeAdded {
@@ -38,7 +42,7 @@ enum PipewireMessage {
     ObjectRemoved { id: u32 },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PipewireLink {
     pub node_from: u32,
     pub port_from: u32,
@@ -56,7 +60,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pw_thread =
         std::thread::spawn(move || pipewire_connection::thread_main(gtk_sender, pw_receiver));
 
-    let app = application::Application::new(gtk_receiver);
+    let app = application::Application::new(gtk_receiver, pw_sender.clone());
 
     app.run(&std::env::args().collect::<Vec<_>>());
 
