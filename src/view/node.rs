@@ -1,6 +1,6 @@
 use super::graph_view::GraphView;
 
-use gtk::{glib, prelude::*, subclass::prelude::*, WidgetExt};
+use gtk::{glib, prelude::*, subclass::prelude::*};
 use pipewire::spa::Direction;
 
 use std::{collections::HashMap, rc::Rc};
@@ -38,12 +38,12 @@ mod imp {
             motion_controller.connect_enter(|controller, _, _| {
                 // Tell the graphview that the Node is the target of a drag when the mouse enters its label
                 let widget = controller
-                    .get_widget()
+                    .widget()
                     .expect("Controller with enter event has no widget")
-                    .get_ancestor(super::Node::static_type())
+                    .ancestor(super::Node::static_type())
                     .expect("Node label does not have a node ancestor widget");
                 widget
-                    .get_ancestor(GraphView::static_type())
+                    .ancestor(GraphView::static_type())
                     .expect("Node with enter event is not on graph")
                     .dynamic_cast::<GraphView>()
                     .unwrap()
@@ -53,9 +53,9 @@ mod imp {
                 // Tell the graphview that the Node is no longer the target of a drag when the mouse leaves.
                 // FIXME: Check that we are the current target before setting none.
                 controller
-                    .get_widget()
+                    .widget()
                     .expect("Controller with leave event has no widget")
-                    .get_ancestor(GraphView::static_type())
+                    .ancestor(GraphView::static_type())
                     .expect("Node with leave event is not on graph")
                     .dynamic_cast::<GraphView>()
                     .unwrap()

@@ -80,11 +80,10 @@ impl Port {
                 let drop_target = gtk::DropTarget::new(u32::static_type(), gdk::DragAction::COPY);
                 let this = res.clone();
                 drop_target.connect_drop(move |drop_target, val, _, _| {
-                    if let Some(source_id) = val.downcast_ref::<u32>() {
+                    if let Ok(source_id) = val.get::<u32>() {
                         // Get the callback registered in the widget and call it
-                        let source_id = source_id.get_some();
                         drop_target
-                            .get_widget()
+                            .widget()
                             .expect("Drop target has no widget")
                             .emit_by_name("port-toggled", &[&source_id, &this.id()])
                             .expect("Failed to send signal");
@@ -99,7 +98,7 @@ impl Port {
             Direction::Output => {
                 // The port will simply provide its pipewire id to the drag target.
                 let drag_src = gtk::DragSourceBuilder::new()
-                    .content(&gdk::ContentProvider::new_for_value(&(id.to_value())))
+                    .content(&gdk::ContentProvider::for_value(&(id.to_value())))
                     .build();
                 res.add_controller(&drag_src);
             }

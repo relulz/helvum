@@ -72,8 +72,8 @@ mod imp {
                 .child(&scrollwindow)
                 .build();
             window
-                .get_settings()
-                .set_property_gtk_application_prefer_dark_theme(true);
+                .settings()
+                .set_gtk_application_prefer_dark_theme(true);
             window.show();
         }
 
@@ -84,7 +84,7 @@ mod imp {
             let provider = gtk::CssProvider::new();
             provider.load_from_data(STYLE.as_bytes());
             gtk::StyleContext::add_provider_for_display(
-                &gtk::gdk::Display::get_default().expect("Error initializing gtk css provider."),
+                &gtk::gdk::Display::default().expect("Error initializing gtk css provider."),
                 &provider,
                 gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
             );
@@ -197,8 +197,8 @@ impl Application {
             false,
             clone!(@weak self as app => @default-return None, move |args| {
                 // Args always look like this: &[widget, id_port_from, id_port_to]
-                let port_from = args[1].get_some::<u32>().unwrap();
-                let port_to = args[2].get_some::<u32>().unwrap();
+                let port_from = args[1].get::<u32>().unwrap();
+                let port_to = args[2].get::<u32>().unwrap();
 
                 app.toggle_link(port_from, port_to);
 

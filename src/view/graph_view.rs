@@ -1,15 +1,15 @@
 use super::Node;
 
-use gtk::{glib, graphene, gsk, prelude::*, subclass::prelude::*, WidgetExt};
+use gtk::{gdk, glib, graphene, gsk, prelude::*, subclass::prelude::*};
 
 use std::collections::HashMap;
 
 mod imp {
     use super::*;
 
-    use gtk::{gdk, WidgetExt};
-
     use std::{cell::RefCell, rc::Rc};
+
+    use log::warn;
 
     #[derive(Default)]
     pub struct GraphView {
@@ -38,7 +38,7 @@ mod imp {
             let motion_controller = gtk::EventControllerMotion::new();
             motion_controller.connect_motion(|controller, x, y| {
                 let instance = controller
-                    .get_widget()
+                    .widget()
                     .unwrap()
                     .dynamic_cast::<Self::Type>()
                     .unwrap();
@@ -46,9 +46,9 @@ mod imp {
 
                 if let Some(ref widget) = *this.dragged.borrow() {
                     if controller
-                        .get_current_event()
+                        .current_event()
                         .unwrap()
-                        .get_modifier_state()
+                        .modifier_state()
                         .contains(gdk::ModifierType::BUTTON1_MASK)
                     {
                         instance.move_node(&widget, x as f32, y as f32);
@@ -71,7 +71,7 @@ mod imp {
             /* FIXME: A lot of hardcoded values in here.
             Try to use relative units (em) and colours from the theme as much as possible. */
 
-            let alloc = widget.get_allocation();
+            let alloc = widget.allocation();
 
             let cr = snapshot
                 .append_cairo(&graphene::Rect::new(
@@ -83,9 +83,11 @@ mod imp {
                 .expect("Failed to get cairo context");
 
             // Try to replace the background color with a darker one from the theme.
-            if let Some(rgba) = widget.get_style_context().lookup_color("text_view_bg") {
+            if let Some(rgba) = widget.style_context().lookup_color("text_view_bg") {
                 cr.set_source_rgb(rgba.red.into(), rgba.green.into(), rgba.blue.into());
-                cr.paint();
+                if let Err(e) = cr.paint() {
+                    warn!("Failed to paint graphview background: {}", e);
+                };
             } // TODO: else log colour not found
 
             // Draw a nice grid on the background.
@@ -103,7 +105,9 @@ mod imp {
                 cr.line_to(x, alloc.height as f64);
                 x += 20.0; // TODO: Change to em;
             }
-            cr.stroke();
+            if let Err(e) = cr.stroke() {
+                warn!("Failed to draw graphview grid: {}", e);
+            };
 
             // Draw all links
             cr.set_line_width(2.0);
@@ -112,7 +116,9 @@ mod imp {
                 if let Some((from_x, from_y, to_x, to_y)) = self.get_link_coordinates(link) {
                     cr.move_to(from_x, from_y);
                     cr.curve_to(from_x + 75.0, from_y, to_x - 75.0, to_y, to_x, to_y);
-                    cr.stroke();
+                    if let Err(e) = cr.stroke() {
+                        warn!("Failed to draw graphview links: {}", e);
+                    };
                 } else {
                     log::warn!("Could not get allocation of ports of link: {:?}", link);
                 }
@@ -122,7 +128,7 @@ mod imp {
             self.nodes
                 .borrow()
                 .values()
-                .for_each(|node| self.get_instance().snapshot_child(node, snapshot));
+                .for_each(|node| self.instance().snapshot_child(node, snapshot));
         }
     }
 
@@ -143,11 +149,11 @@ mod imp {
                 y: mut fy,
                 width: fw,
                 height: fh,
-            } = from_port.get_allocation();
+            } = from_port.allocation();
             let from_node = from_port
-                .get_ancestor(Node::static_type())
+                .ancestor(Node::static_type())
                 .expect("Port is not a child of a node");
-            let gtk::Allocation { x: fnx, y: fny, .. } = from_node.get_allocation();
+            let gtk::Allocation { x: fnx, y: fny, .. } = from_node.allocation();
             fx += fnx + fw;
             fy += fny + (fh / 2);
 
@@ -157,11 +163,11 @@ mod imp {
                 y: mut ty,
                 height: th,
                 ..
-            } = to_port.get_allocation();
+            } = to_port.allocation();
             let to_node = to_port
-                .get_ancestor(Node::static_type())
+                .ancestor(Node::static_type())
                 .expect("Port is not a child of a node");
-            let gtk::Allocation { x: tnx, y: tny, .. } = to_node.get_allocation();
+            let gtk::Allocation { x: tnx, y: tny, .. } = to_node.allocation();
             tx += tnx;
             ty += tny + (th / 2);
 
@@ -249,7 +255,7 @@ impl GraphView {
 
     pub(super) fn move_node(&self, node: &gtk::Widget, x: f32, y: f32) {
         let layout_manager = self
-            .get_layout_manager()
+            .layout_manager()
             .expect("Failed to get layout manager")
             .dynamic_cast::<gtk::FixedLayout>()
             .expect("Failed to cast to FixedLayout");
@@ -260,7 +266,7 @@ impl GraphView {
             .unwrap();
 
         layout_manager
-            .get_layout_child(node)
+            .layout_child(node)
             .expect("Could not get layout child")
             .dynamic_cast::<gtk::FixedLayoutChild>()
             .expect("Could not cast to FixedLayoutChild")

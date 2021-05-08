@@ -62,7 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = application::Application::new(gtk_receiver, pw_sender.clone());
 
-    app.run(&std::env::args().collect::<Vec<_>>());
+    app.run();
 
     pw_sender
         .send(GtkMessage::Terminate)
