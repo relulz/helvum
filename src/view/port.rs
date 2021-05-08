@@ -101,6 +101,9 @@ impl Port {
                     .content(&gdk::ContentProvider::for_value(&(id.to_value())))
                     .build();
                 res.add_controller(&drag_src);
+
+                // Display a grab cursor when the mouse is over the port so the user knows it can be dragged to another port.
+                res.set_cursor(gtk::gdk::Cursor::from_name("grab", None).as_ref());
             }
         }
 
