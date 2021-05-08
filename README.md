@@ -4,7 +4,8 @@ Helvum is a GTK-based patchbay for pipewire, inspired by the JACK tool [catia](h
 
 # Features planned
 
-- Allow creation of links from one port to another.
+- Volume control
+- "Debug mode" that lets you view advanced information for nodes and ports
 
 More suggestions are welcome!
 
