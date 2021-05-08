@@ -41,7 +41,7 @@ enum Item {
 /// It also keeps and manages a state object that contains the current state of objects present on the remote.
 pub struct Controller {
     state: HashMap<u32, Item>,
-    view: Rc<view::View>,
+    view: view::View,
 }
 
 impl Controller {
@@ -53,7 +53,7 @@ impl Controller {
     /// The returned `Rc` will be the only strong reference kept to the controller, so dropping the `Rc`
     /// will also drop the controller, unless the `Rc` is cloned outside of this function.
     pub(super) fn new(
-        view: Rc<view::View>,
+        view: view::View,
         gtk_receiver: Receiver<PipewireMessage>,
     ) -> Rc<RefCell<Controller>> {
         let result = Rc::new(RefCell::new(Controller {

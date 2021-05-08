@@ -2,10 +2,11 @@ mod controller;
 mod pipewire_connection;
 mod view;
 
-use std::rc::Rc;
-
 use controller::MediaType;
-use gtk::glib::{self, PRIORITY_DEFAULT};
+use gtk::{
+    glib::{self, PRIORITY_DEFAULT},
+    prelude::*,
+};
 use pipewire::spa::Direction;
 
 /// Messages used GTK thread to command the pipewire thread.
@@ -55,10 +56,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pw_thread =
         std::thread::spawn(move || pipewire_connection::thread_main(gtk_sender, pw_receiver));
 
-    let view = Rc::new(view::View::new());
+    let view = view::View::new();
     let _controller = controller::Controller::new(view.clone(), gtk_receiver);
 
-    view.run();
+    view.run(&std::env::args().collect::<Vec<_>>());
 
     pw_sender
         .send(GtkMessage::Terminate)
