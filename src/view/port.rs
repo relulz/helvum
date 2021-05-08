@@ -7,7 +7,7 @@ use gtk::{
 use log::warn;
 use pipewire::spa::Direction;
 
-use crate::controller::MediaType;
+use crate::application::MediaType;
 
 mod imp {
     use once_cell::{sync::Lazy, unsync::OnceCell};

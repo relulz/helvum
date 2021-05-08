@@ -7,7 +7,7 @@ use pipewire::{
     Context, MainLoop,
 };
 
-use crate::{controller::MediaType, GtkMessage, PipewireMessage};
+use crate::{application::MediaType, GtkMessage, PipewireMessage};
 
 /// The "main" function of the pipewire thread.
 pub(super) fn thread_main(
