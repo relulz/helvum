@@ -21,23 +21,7 @@ pub enum MediaType {
     Midi,
 }
 
-// FIXME: This should be in its own .css file.
-static STYLE: &str = "
-.audio {
-    background: rgb(50,100,240);
-	color: black;
-}
-
-.video {
-    background: rgb(200,200,0);
-	color: black;
-}
-
-.midi {
-    background: rgb(200,0,50);
-    color: black;
-}
-";
+static STYLE: &str = include_str!("style.css");
 
 mod imp {
     use super::*;
