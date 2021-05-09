@@ -1,6 +1,11 @@
-use super::Node;
+use super::{Node, Port};
 
-use gtk::{gdk, glib, graphene, gsk, prelude::*, subclass::prelude::*};
+use gtk::{
+    glib::{self, clone},
+    graphene, gsk,
+    prelude::*,
+    subclass::prelude::*,
+};
 
 use std::collections::HashMap;
 
@@ -15,7 +20,6 @@ mod imp {
     pub struct GraphView {
         pub(super) nodes: RefCell<HashMap<u32, Node>>,
         pub(super) links: RefCell<HashMap<u32, crate::PipewireLink>>,
-        pub(super) dragged: Rc<RefCell<Option<gtk::Widget>>>,
     }
 
     #[glib::object_subclass]
@@ -34,28 +38,47 @@ mod imp {
         fn constructed(&self, obj: &Self::Type) {
             self.parent_constructed(obj);
 
-            // Move the Node that is currently being dragged to the cursor position as long as Mouse Button 1 is held.
-            let motion_controller = gtk::EventControllerMotion::new();
-            motion_controller.connect_motion(|controller, x, y| {
-                let instance = controller
-                    .widget()
-                    .unwrap()
-                    .dynamic_cast::<Self::Type>()
-                    .unwrap();
-                let this = imp::GraphView::from_instance(&instance);
+            let drag_state = Rc::new(RefCell::new(None));
+            let drag_controller = gtk::GestureDrag::new();
 
-                if let Some(ref widget) = *this.dragged.borrow() {
-                    if controller
-                        .current_event()
-                        .unwrap()
-                        .modifier_state()
-                        .contains(gdk::ModifierType::BUTTON1_MASK)
-                    {
-                        instance.move_node(&widget, x as f32, y as f32);
+            drag_controller.connect_drag_begin(
+                clone!(@strong drag_state => move |drag_controller, x, y| {
+                let mut drag_state = drag_state.borrow_mut();
+                let widget = drag_controller
+                    .widget()
+                    .expect("drag-begin event has no widget")
+                    .dynamic_cast::<Self::Type>()
+                    .expect("drag-begin event is not on the GraphView");
+                // pick() should at least return the widget itself.
+                let target = widget.pick(x, y, gtk::PickFlags::DEFAULT).expect("drag-begin pick() did not return a widget");
+                *drag_state = if target.ancestor(Port::static_type()).is_some() {
+                    // The user targeted a port, so the dragging should be handled by the Port
+                    // component instead of here.
+                    None
+                } else if let Some(target) = target.ancestor(Node::static_type()) {
+                    // The user targeted a Node without targeting a specific Port.
+                    // Drag the Node around the screen.
+                    let (x, y) = widget.get_node_position(&target);
+                    Some((target, x, y))
+                } else {
+                    None
+                }
+            }));
+            drag_controller.connect_drag_update(
+                clone!(@strong drag_state => move |drag_controller, x, y| {
+                    let widget = drag_controller
+                        .widget()
+                        .expect("drag-update event has no widget")
+                        .dynamic_cast::<Self::Type>()
+                        .expect("drag-update event is not on the GraphView");
+                    let drag_state = drag_state.borrow();
+                    if let Some((ref node, x1, y1)) = *drag_state {
+                        widget.move_node(node, x1 + x as f32, y1 + y as f32);
                     }
-                };
-            });
-            obj.add_controller(&motion_controller);
+                }
+                ),
+            );
+            obj.add_controller(&drag_controller);
         }
 
         fn dispose(&self, _obj: &Self::Type) {
@@ -249,8 +272,20 @@ impl GraphView {
         self.queue_draw();
     }
 
-    pub(super) fn set_dragged(&self, widget: Option<gtk::Widget>) {
-        *imp::GraphView::from_instance(self).dragged.borrow_mut() = widget;
+    pub(super) fn get_node_position(&self, node: &gtk::Widget) -> (f32, f32) {
+        let layout_manager = self
+            .layout_manager()
+            .expect("Failed to get layout manager")
+            .dynamic_cast::<gtk::FixedLayout>()
+            .expect("Failed to cast to FixedLayout");
+
+        let node = layout_manager
+            .layout_child(node)
+            .expect("Could not get layout child")
+            .dynamic_cast::<gtk::FixedLayoutChild>()
+            .expect("Could not cast to FixedLayoutChild");
+        let transform = node.transform().unwrap_or_default();
+        transform.to_translate()
     }
 
     pub(super) fn move_node(&self, node: &gtk::Widget, x: f32, y: f32) {
