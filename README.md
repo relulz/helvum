@@ -11,7 +11,9 @@ More suggestions are welcome!
 
 # Distribution packages
 
-- ArchLinux: [aur/helvum-git](https://aur.archlinux.org/packages/helvum-git)
+- ArchLinux:
+  - [aur/helvum](https://aur.archlinux.org/packages/helvum)
+  - [aur/helvum-git](https://aur.archlinux.org/packages/helvum-git)
 
 # Building
 For compilation, you will need:
