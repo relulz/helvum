@@ -54,6 +54,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     gtk::init()?;
 
+    // Aquire main context so that we can attach the gtk channel later.
+    let ctx = glib::MainContext::default();
+    let _guard = ctx.acquire().unwrap();
+
     // Start the pipewire thread with channels in both directions.
     let (gtk_sender, gtk_receiver) = glib::MainContext::channel(PRIORITY_DEFAULT);
     let (pw_sender, pw_receiver) = pipewire::channel::channel();
