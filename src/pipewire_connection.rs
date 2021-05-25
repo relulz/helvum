@@ -88,7 +88,7 @@ fn handle_node(node: &GlobalObject<ForeignDict>, sender: &glib::Sender<PipewireM
             .unwrap_or_default(),
     );
 
-    // FIXME: This relies on the node being passed to us by the pipwire server before its port.
+    // FIXME: Instead of checking these props, the "EnumFormat" parameter should be checked instead.
     let media_type = props
         .get("media.class")
         .map(|class| {
