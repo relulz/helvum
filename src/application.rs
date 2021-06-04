@@ -6,7 +6,7 @@ use gtk::{
     prelude::*,
     subclass::prelude::*,
 };
-use log::{info, warn};
+use log::{error, info, warn};
 use pipewire::{channel::Sender, spa::Direction};
 
 use crate::{
@@ -127,7 +127,7 @@ impl Application {
                             name,
                             direction,
                         } => app.add_port(id, name, node_id, direction),
-                        PipewireMessage::LinkAdded { id, link } => app.add_link(id, link),
+                        PipewireMessage::LinkAdded { id, port_from, port_to } => app.add_link(id, port_from, port_to),
                         PipewireMessage::ObjectRemoved { id } => app.remove_global(id),
                     };
                     Continue(true)
@@ -196,23 +196,53 @@ impl Application {
     }
 
     /// Add a new link to the view.
-    pub fn add_link(&self, id: u32, link: PipewireLink) {
+    pub fn add_link(&self, id: u32, port_from: u32, port_to: u32) {
         info!("Adding link to graph: id {}", id);
 
         let imp = imp::Application::from_instance(self);
+        let mut state = imp.state.borrow_mut();
 
         // FIXME: Links should be colored depending on the data they carry (video, audio, midi) like ports are.
 
-        imp.state.borrow_mut().insert(
+        let node_from = *match state.get(port_from) {
+            Some(Item::Port { node_id }) => node_id,
+            _ => {
+                error!(
+                    "Tried to add link (id:{}), but its output port (id:{}) is not known",
+                    id, port_from
+                );
+                return;
+            }
+        };
+        let node_to = *match state.get(port_to) {
+            Some(Item::Port { node_id }) => node_id,
+            _ => {
+                error!(
+                    "Tried to add link (id:{}), but its input port (id:{}) is not known",
+                    id, port_to
+                );
+                return;
+            }
+        };
+
+        state.insert(
             id,
             Item::Link {
-                output_port: link.port_from,
-                input_port: link.port_to,
+                output_port: port_from,
+                input_port: port_to,
             },
         );
 
         // Update graph to contain the new link.
-        imp.graphview.add_link(id, link);
+        imp.graphview.add_link(
+            id,
+            PipewireLink {
+                node_from,
+                port_from,
+                node_to,
+                port_to,
+            },
+        );
     }
 
     // Toggle a link between the two specified ports on the remote pipewire server.

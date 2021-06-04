@@ -147,21 +147,11 @@ fn handle_link(link: &GlobalObject<ForeignDict>, sender: &glib::Sender<PipewireM
         .props
         .as_ref()
         .expect("Link object is missing properties");
-    let node_from: u32 = props
-        .get("link.output.node")
-        .expect("Link has no link.input.node property")
-        .parse()
-        .expect("Could not parse link.input.node property");
     let port_from: u32 = props
         .get("link.output.port")
         .expect("Link has no link.output.port property")
         .parse()
         .expect("Could not parse link.output.port property");
-    let node_to: u32 = props
-        .get("link.input.node")
-        .expect("Link has no link.input.node property")
-        .parse()
-        .expect("Could not parse link.input.node property");
     let port_to: u32 = props
         .get("link.input.port")
         .expect("Link has no link.input.port property")
@@ -171,12 +161,8 @@ fn handle_link(link: &GlobalObject<ForeignDict>, sender: &glib::Sender<PipewireM
     sender
         .send(PipewireMessage::LinkAdded {
             id: link.id,
-            link: crate::PipewireLink {
-                node_from,
-                port_from,
-                node_to,
-                port_to,
-            },
+            port_from,
+            port_to,
         })
         .expect("Failed to send message");
 }

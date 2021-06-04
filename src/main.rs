@@ -37,7 +37,11 @@ enum PipewireMessage {
         direction: Direction,
     },
     /// A new link has appeared.
-    LinkAdded { id: u32, link: PipewireLink },
+    LinkAdded {
+        id: u32,
+        port_from: u32,
+        port_to: u32,
+    },
     /// An object was removed
     ObjectRemoved { id: u32 },
 }
