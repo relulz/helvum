@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::cell::RefCell;
 
 use gtk::{
     gio,
@@ -6,20 +6,13 @@ use gtk::{
     prelude::*,
     subclass::prelude::*,
 };
-use log::{error, info, warn};
+use log::{info, warn};
 use pipewire::{channel::Sender, spa::Direction};
 
 use crate::{
     view::{self},
-    GtkMessage, PipewireLink, PipewireMessage,
+    GtkMessage, MediaType, PipewireLink, PipewireMessage,
 };
-
-#[derive(Debug, Copy, Clone)]
-pub enum MediaType {
-    Audio,
-    Video,
-    Midi,
-}
 
 static STYLE: &str = include_str!("style.css");
 
@@ -31,7 +24,6 @@ mod imp {
     #[derive(Default)]
     pub struct Application {
         pub(super) graphview: view::GraphView,
-        pub(super) state: RefCell<State>,
         pub(super) pw_sender: OnceCell<RefCell<Sender<GtkMessage>>>,
     }
 
@@ -116,19 +108,12 @@ impl Application {
                 @weak app => @default-return Continue(true),
                 move |msg| {
                     match msg {
-                        PipewireMessage::NodeAdded {
-                            id,
-                            name,
-                            media_type,
-                        } => app.add_node(id, name, media_type),
-                        PipewireMessage::PortAdded {
-                            id,
-                            node_id,
-                            name,
-                            direction,
-                        } => app.add_port(id, name, node_id, direction),
-                        PipewireMessage::LinkAdded { id, port_from, port_to } => app.add_link(id, port_from, port_to),
-                        PipewireMessage::ObjectRemoved { id } => app.remove_global(id),
+                        PipewireMessage::NodeAdded{ id, name } => app.add_node(id,name),
+                        PipewireMessage::PortAdded{ id, node_id, name, direction, media_type} => app.add_port(id,name,node_id,direction,media_type),
+                        PipewireMessage::LinkAdded{ id, node_from, port_from, node_to, port_to} => app.add_link(id,node_from,port_from,node_to,port_to),
+                        PipewireMessage::NodeRemoved { id } => app.remove_node(id),
+                        PipewireMessage::PortRemoved { id, node_id } => app.remove_port(id, node_id),
+                        PipewireMessage::LinkRemoved { id } => app.remove_link(id)
                     };
                     Continue(true)
                 }
@@ -139,39 +124,26 @@ impl Application {
     }
 
     /// Add a new node to the view.
-    pub fn add_node(&self, id: u32, name: String, media_type: Option<MediaType>) {
+    pub fn add_node(&self, id: u32, name: String) {
         info!("Adding node to graph: id {}", id);
 
-        let imp = imp::Application::from_instance(self);
-
-        imp.state.borrow_mut().insert(
-            id,
-            Item::Node {
-                // widget: node_widget,
-                media_type,
-            },
-        );
-
-        imp.graphview.add_node(id, view::Node::new(name.as_str()));
+        imp::Application::from_instance(self)
+            .graphview
+            .add_node(id, view::Node::new(name.as_str()));
     }
 
     /// Add a new port to the view.
-    pub fn add_port(&self, id: u32, name: String, node_id: u32, direction: Direction) {
+    pub fn add_port(
+        &self,
+        id: u32,
+        name: String,
+        node_id: u32,
+        direction: Direction,
+        media_type: Option<MediaType>,
+    ) {
         info!("Adding port to graph: id {}", id);
 
         let imp = imp::Application::from_instance(self);
-
-        // Find out the nodes media type so that the port can be colored.
-        let media_type =
-            if let Some(Item::Node { media_type, .. }) = imp.state.borrow().get(node_id) {
-                media_type.to_owned()
-            } else {
-                warn!("Node not found for Port {}", id);
-                None
-            };
-
-        // Save node_id so we can delete this port easily.
-        imp.state.borrow_mut().insert(id, Item::Port { node_id });
 
         let port = view::Port::new(id, name.as_str(), direction, media_type);
 
@@ -196,45 +168,13 @@ impl Application {
     }
 
     /// Add a new link to the view.
-    pub fn add_link(&self, id: u32, port_from: u32, port_to: u32) {
+    pub fn add_link(&self, id: u32, node_from: u32, port_from: u32, node_to: u32, port_to: u32) {
         info!("Adding link to graph: id {}", id);
-
-        let imp = imp::Application::from_instance(self);
-        let mut state = imp.state.borrow_mut();
 
         // FIXME: Links should be colored depending on the data they carry (video, audio, midi) like ports are.
 
-        let node_from = *match state.get(port_from) {
-            Some(Item::Port { node_id }) => node_id,
-            _ => {
-                error!(
-                    "Tried to add link (id:{}), but its output port (id:{}) is not known",
-                    id, port_from
-                );
-                return;
-            }
-        };
-        let node_to = *match state.get(port_to) {
-            Some(Item::Port { node_id }) => node_id,
-            _ => {
-                error!(
-                    "Tried to add link (id:{}), but its input port (id:{}) is not known",
-                    id, port_to
-                );
-                return;
-            }
-        };
-
-        state.insert(
-            id,
-            Item::Link {
-                output_port: port_from,
-                input_port: port_to,
-            },
-        );
-
         // Update graph to contain the new link.
-        imp.graphview.add_link(
+        imp::Application::from_instance(self).graphview.add_link(
             id,
             PipewireLink {
                 node_from,
@@ -249,54 +189,9 @@ impl Application {
     fn toggle_link(&self, port_from: u32, port_to: u32) {
         let imp = imp::Application::from_instance(self);
         let sender = imp.pw_sender.get().expect("pw_sender not set").borrow_mut();
-        let state = imp.state.borrow_mut();
-
-        if let Some(id) = state.get_link_id(port_from, port_to) {
-            info!("Requesting removal of link with id {}", id);
-
-            sender
-                .send(GtkMessage::DestroyGlobal(id))
-                .expect("Failed to send message");
-        } else {
-            info!(
-                "Requesting creation of link from port id:{} to port id:{}",
-                port_from, port_to
-            );
-
-            let node_from = state
-                .get_node_of_port(port_from)
-                .expect("Requested port not in state");
-            let node_to = state
-                .get_node_of_port(port_to)
-                .expect("Requested port not in state");
-
-            sender
-                .send(GtkMessage::CreateLink(PipewireLink {
-                    node_from,
-                    port_from,
-                    node_to,
-                    port_to,
-                }))
-                .expect("Failed to send message");
-        }
-    }
-
-    /// Handle a global object being removed.
-    pub fn remove_global(&self, id: u32) {
-        let imp = imp::Application::from_instance(self);
-
-        if let Some(item) = imp.state.borrow_mut().remove(id) {
-            match item {
-                Item::Node { .. } => self.remove_node(id),
-                Item::Port { node_id } => self.remove_port(id, node_id),
-                Item::Link { .. } => self.remove_link(id),
-            }
-        } else {
-            warn!(
-                "Attempted to remove item with id {} that is not saved in state",
-                id
-            );
-        }
+        sender
+            .send(GtkMessage::ToggleLink { port_from, port_to })
+            .expect("Failed to send message");
     }
 
     /// Remove the node with the specified id from the view.
@@ -322,85 +217,5 @@ impl Application {
 
         let imp = imp::Application::from_instance(self);
         imp.graphview.remove_link(id);
-    }
-}
-
-/// Any pipewire item we need to keep track of.
-/// These will be saved in the [`Application`]s `state` struct associated with their id.
-enum Item {
-    Node {
-        // Keep track of the nodes media type to color ports on it.
-        media_type: Option<MediaType>,
-    },
-    Port {
-        // Save the id of the node this is on so we can remove the port from it
-        // when it is deleted.
-        node_id: u32,
-    },
-    // We don't need to memorize anything about links right now, but we need to
-    // be able to find out an id is a link.
-    Link {
-        output_port: u32,
-        input_port: u32,
-    },
-}
-
-/// This struct keeps track of any relevant items and stores them under their IDs.
-///
-/// Given two port ids, it can also efficiently find the id of the link that connects them.
-#[derive(Default)]
-struct State {
-    /// Map pipewire ids to items.
-    items: HashMap<u32, Item>,
-    /// Map `(output port id, input port id)` tuples to the id of the link that connects them.
-    links: HashMap<(u32, u32), u32>,
-}
-
-impl State {
-    /// Add a new item under the specified id.
-    fn insert(&mut self, id: u32, item: Item) {
-        if let Item::Link {
-            output_port,
-            input_port,
-        } = item
-        {
-            self.links.insert((output_port, input_port), id);
-        }
-
-        self.items.insert(id, item);
-    }
-
-    /// Get the item that has the specified id.
-    fn get(&self, id: u32) -> Option<&Item> {
-        self.items.get(&id)
-    }
-
-    /// Get the id of the link that links the two specified ports.
-    fn get_link_id(&self, output_port: u32, input_port: u32) -> Option<u32> {
-        self.links.get(&(output_port, input_port)).copied()
-    }
-
-    /// Remove the item with the specified id, returning it if it exists.
-    fn remove(&mut self, id: u32) -> Option<Item> {
-        let removed = self.items.remove(&id);
-
-        if let Some(Item::Link {
-            output_port,
-            input_port,
-        }) = removed
-        {
-            self.links.remove(&(output_port, input_port));
-        }
-
-        removed
-    }
-
-    /// Convenience function: Get the id of the node a port is on
-    fn get_node_of_port(&self, port: u32) -> Option<u32> {
-        if let Some(Item::Port { node_id }) = self.get(port) {
-            Some(*node_id)
-        } else {
-            None
-        }
     }
 }

@@ -2,48 +2,59 @@ mod application;
 mod pipewire_connection;
 mod view;
 
-use application::MediaType;
 use gtk::{
     glib::{self, PRIORITY_DEFAULT},
     prelude::*,
 };
 use pipewire::spa::Direction;
 
-/// Messages used GTK thread to command the pipewire thread.
+/// Messages sent by the GTK thread to notify the pipewire thread.
 #[derive(Debug, Clone)]
 enum GtkMessage {
-    /// Create a new link.
-    CreateLink(PipewireLink),
-    /// Destroy the global with the specified id.
-    DestroyGlobal(u32),
+    /// Toggle a link between the two specified ports.
+    ToggleLink { port_from: u32, port_to: u32 },
     /// Quit the event loop and let the thread finish.
     Terminate,
 }
 
-/// Messages used pipewire thread to notify the GTK thread.
+/// Messages sent by the pipewire thread to notify the GTK thread.
 #[derive(Debug, Clone)]
 enum PipewireMessage {
-    /// A new node has appeared.
     NodeAdded {
         id: u32,
         name: String,
-        media_type: Option<MediaType>,
     },
-    /// A new port has appeared.
     PortAdded {
         id: u32,
         node_id: u32,
         name: String,
         direction: Direction,
+        media_type: Option<MediaType>,
     },
-    /// A new link has appeared.
     LinkAdded {
         id: u32,
+        node_from: u32,
         port_from: u32,
+        node_to: u32,
         port_to: u32,
     },
-    /// An object was removed
-    ObjectRemoved { id: u32 },
+    NodeRemoved {
+        id: u32,
+    },
+    PortRemoved {
+        id: u32,
+        node_id: u32,
+    },
+    LinkRemoved {
+        id: u32,
+    },
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum MediaType {
+    Audio,
+    Video,
+    Midi,
 }
 
 #[derive(Debug, Clone)]
