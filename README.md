@@ -2,18 +2,15 @@ Helvum is a GTK-based patchbay for pipewire, inspired by the JACK tool [catia](h
 
 ![Screenshot](screenshot.png)
 
+[![Packaging status](https://repology.org/badge/vertical-allrepos/helvum.svg)](https://repology.org/project/helvum/versions)
+
+
 # Features planned
 
 - Volume control
 - "Debug mode" that lets you view advanced information for nodes and ports
 
 More suggestions are welcome!
-
-# Distribution packages
-
-- ArchLinux:
-  - [aur/helvum](https://aur.archlinux.org/packages/helvum)
-  - [aur/helvum-git](https://aur.archlinux.org/packages/helvum-git)
 
 # Building
 For compilation, you will need:
@@ -28,3 +25,7 @@ To compile, run
 
 in the repository root.
 The resulting binary will be at `target/release/helvum`.
+
+# License
+Helvum is distributed under the terms of the GPL3 license.
+See LICENSE for more information.
