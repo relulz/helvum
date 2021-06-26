@@ -100,20 +100,17 @@ fn handle_node(
     );
 
     // FIXME: Instead of checking these props, the "EnumFormat" parameter should be checked instead.
-    let media_type = props
-        .get("media.class")
-        .map(|class| {
-            if class.contains("Audio") {
-                Some(MediaType::Audio)
-            } else if class.contains("Video") {
-                Some(MediaType::Video)
-            } else if class.contains("Midi") {
-                Some(MediaType::Midi)
-            } else {
-                None
-            }
-        })
-        .flatten();
+    let media_type = props.get("media.class").and_then(|class| {
+        if class.contains("Audio") {
+            Some(MediaType::Audio)
+        } else if class.contains("Video") {
+            Some(MediaType::Video)
+        } else if class.contains("Midi") {
+            Some(MediaType::Midi)
+        } else {
+            None
+        }
+    });
 
     state.borrow_mut().insert(
         node.id,

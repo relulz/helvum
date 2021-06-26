@@ -108,9 +108,9 @@ impl Application {
                 @weak app => @default-return Continue(true),
                 move |msg| {
                     match msg {
-                        PipewireMessage::NodeAdded{ id, name } => app.add_node(id,name),
-                        PipewireMessage::PortAdded{ id, node_id, name, direction, media_type} => app.add_port(id,name,node_id,direction,media_type),
-                        PipewireMessage::LinkAdded{ id, node_from, port_from, node_to, port_to} => app.add_link(id,node_from,port_from,node_to,port_to),
+                        PipewireMessage::NodeAdded{ id, name } => app.add_node(id, name.as_str()),
+                        PipewireMessage::PortAdded{ id, node_id, name, direction, media_type} => app.add_port(id, name.as_str(), node_id, direction, media_type),
+                        PipewireMessage::LinkAdded{ id, node_from, port_from, node_to, port_to} => app.add_link(id, node_from, port_from, node_to, port_to),
                         PipewireMessage::NodeRemoved { id } => app.remove_node(id),
                         PipewireMessage::PortRemoved { id, node_id } => app.remove_port(id, node_id),
                         PipewireMessage::LinkRemoved { id } => app.remove_link(id)
@@ -124,19 +124,19 @@ impl Application {
     }
 
     /// Add a new node to the view.
-    pub fn add_node(&self, id: u32, name: String) {
+    pub fn add_node(&self, id: u32, name: &str) {
         info!("Adding node to graph: id {}", id);
 
         imp::Application::from_instance(self)
             .graphview
-            .add_node(id, view::Node::new(name.as_str()));
+            .add_node(id, view::Node::new(name));
     }
 
     /// Add a new port to the view.
     pub fn add_port(
         &self,
         id: u32,
-        name: String,
+        name: &str,
         node_id: u32,
         direction: Direction,
         media_type: Option<MediaType>,
@@ -145,7 +145,7 @@ impl Application {
 
         let imp = imp::Application::from_instance(self);
 
-        let port = view::Port::new(id, name.as_str(), direction, media_type);
+        let port = view::Port::new(id, name, direction, media_type);
 
         // Create or delete a link if the widget emits the "port-toggled" signal.
         if let Err(e) = port.connect_local(

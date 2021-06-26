@@ -119,13 +119,13 @@ mod imp {
             let mut y = 0.0;
             while y < alloc.height.into() {
                 cr.move_to(0.0, y);
-                cr.line_to(alloc.width as f64, y);
+                cr.line_to(alloc.width.into(), y);
                 y += 20.0; // TODO: Change to em;
             }
             let mut x = 0.0;
-            while x < alloc.width as f64 {
+            while x < alloc.width.into() {
                 cr.move_to(x, 0.0);
-                cr.line_to(x, alloc.height as f64);
+                cr.line_to(x, alloc.height.into());
                 x += 20.0; // TODO: Change to em;
             }
             if let Err(e) = cr.stroke() {
@@ -159,7 +159,7 @@ mod imp {
         /// Get coordinates for the drawn link to start at and to end at.
         ///
         /// # Returns
-        /// Some((from_x, from_y, to_x, to_y)) if all objects the links refers to exist as widgets.
+        /// `Some((from_x, from_y, to_x, to_y))` if all objects the links refers to exist as widgets.
         fn get_link_coordinates(&self, link: &crate::PipewireLink) -> Option<(f64, f64, f64, f64)> {
             let nodes = self.nodes.borrow();
 
@@ -194,7 +194,7 @@ mod imp {
             tx += tnx;
             ty += tny + (th / 2);
 
-            Some((fx as f64, fy as f64, tx as f64, ty as f64))
+            Some((fx.into(), fy.into(), tx.into(), ty.into()))
         }
     }
 }

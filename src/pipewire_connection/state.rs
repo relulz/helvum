@@ -34,7 +34,7 @@ pub(super) struct State {
 impl State {
     /// Create a new, empty state.
     pub fn new() -> Self {
-        Default::default()
+        Self::default()
     }
 
     /// Add a new item under the specified id.

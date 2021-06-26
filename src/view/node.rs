@@ -12,8 +12,8 @@ mod imp {
         pub(super) grid: gtk::Grid,
         pub(super) label: gtk::Label,
         pub(super) ports: RefCell<HashMap<u32, Rc<crate::view::port::Port>>>,
-        pub(super) num_ports_in: Cell<u32>,
-        pub(super) num_ports_out: Cell<u32>,
+        pub(super) num_ports_in: Cell<i32>,
+        pub(super) num_ports_out: Cell<i32>,
     }
 
     #[glib::object_subclass]
@@ -81,13 +81,13 @@ impl Node {
             Direction::Input => {
                 private
                     .grid
-                    .attach(&port, 0, private.num_ports_in.get() as i32 + 1, 1, 1);
+                    .attach(&port, 0, private.num_ports_in.get() + 1, 1, 1);
                 private.num_ports_in.set(private.num_ports_in.get() + 1);
             }
             Direction::Output => {
                 private
                     .grid
-                    .attach(&port, 1, private.num_ports_out.get() as i32 + 1, 1, 1);
+                    .attach(&port, 1, private.num_ports_out.get() + 1, 1, 1);
                 private.num_ports_out.set(private.num_ports_out.get() + 1);
             }
         }
