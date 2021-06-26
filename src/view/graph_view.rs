@@ -96,7 +96,7 @@ mod imp {
 
             let alloc = widget.allocation();
 
-            let cr = snapshot
+            let background_cr = snapshot
                 .append_cairo(&graphene::Rect::new(
                     0.0,
                     0.0,
@@ -107,51 +107,59 @@ mod imp {
 
             // Try to replace the background color with a darker one from the theme.
             if let Some(rgba) = widget.style_context().lookup_color("text_view_bg") {
-                cr.set_source_rgb(rgba.red.into(), rgba.green.into(), rgba.blue.into());
-                if let Err(e) = cr.paint() {
+                background_cr.set_source_rgb(rgba.red.into(), rgba.green.into(), rgba.blue.into());
+                if let Err(e) = background_cr.paint() {
                     warn!("Failed to paint graphview background: {}", e);
                 };
             } // TODO: else log colour not found
 
             // Draw a nice grid on the background.
-            cr.set_source_rgb(0.18, 0.18, 0.18);
-            cr.set_line_width(0.2); // TODO: Set to 1px
+            background_cr.set_source_rgb(0.18, 0.18, 0.18);
+            background_cr.set_line_width(0.2); // TODO: Set to 1px
             let mut y = 0.0;
             while y < alloc.height.into() {
-                cr.move_to(0.0, y);
-                cr.line_to(alloc.width.into(), y);
+                background_cr.move_to(0.0, y);
+                background_cr.line_to(alloc.width.into(), y);
                 y += 20.0; // TODO: Change to em;
             }
             let mut x = 0.0;
             while x < alloc.width.into() {
-                cr.move_to(x, 0.0);
-                cr.line_to(x, alloc.height.into());
+                background_cr.move_to(x, 0.0);
+                background_cr.line_to(x, alloc.height.into());
                 x += 20.0; // TODO: Change to em;
             }
-            if let Err(e) = cr.stroke() {
+            if let Err(e) = background_cr.stroke() {
                 warn!("Failed to draw graphview grid: {}", e);
             };
-
-            // Draw all links
-            cr.set_line_width(2.0);
-            cr.set_source_rgb(0.0, 0.0, 0.0);
-            for link in self.links.borrow().values() {
-                if let Some((from_x, from_y, to_x, to_y)) = self.get_link_coordinates(link) {
-                    cr.move_to(from_x, from_y);
-                    cr.curve_to(from_x + 75.0, from_y, to_x - 75.0, to_y, to_x, to_y);
-                    if let Err(e) = cr.stroke() {
-                        warn!("Failed to draw graphview links: {}", e);
-                    };
-                } else {
-                    log::warn!("Could not get allocation of ports of link: {:?}", link);
-                }
-            }
 
             // Draw all children
             self.nodes
                 .borrow()
                 .values()
                 .for_each(|node| self.instance().snapshot_child(node, snapshot));
+
+            // Draw all links
+            let link_cr = snapshot
+                .append_cairo(&graphene::Rect::new(
+                    0.0,
+                    0.0,
+                    alloc.width as f32,
+                    alloc.height as f32,
+                ))
+                .expect("Failed to get cairo context");
+            link_cr.set_line_width(2.0);
+            link_cr.set_source_rgb(0.0, 0.0, 0.0);
+            for link in self.links.borrow().values() {
+                if let Some((from_x, from_y, to_x, to_y)) = self.get_link_coordinates(link) {
+                    link_cr.move_to(from_x, from_y);
+                    link_cr.curve_to(from_x + 75.0, from_y, to_x - 75.0, to_y, to_x, to_y);
+                    if let Err(e) = link_cr.stroke() {
+                        warn!("Failed to draw graphview links: {}", e);
+                    };
+                } else {
+                    log::warn!("Could not get allocation of ports of link: {:?}", link);
+                }
+            }
         }
     }
 
