@@ -6,6 +6,7 @@ use gtk::{
     prelude::*,
     subclass::prelude::*,
 };
+use log::{error, warn};
 
 use std::collections::HashMap;
 
@@ -249,6 +250,8 @@ impl GraphView {
         let mut nodes = private.nodes.borrow_mut();
         if let Some(node) = nodes.remove(&id) {
             node.unparent();
+        } else {
+            warn!("Tried to remove non-existant node (id={}) from graph", id);
         }
     }
 
@@ -258,11 +261,9 @@ impl GraphView {
         if let Some(node) = private.nodes.borrow_mut().get_mut(&node_id) {
             node.add_port(port_id, port);
         } else {
-            // FIXME: Log this instead
-            log::error!(
+            error!(
                 "Node with id {} not found when trying to add port with id {} to graph",
-                node_id,
-                port_id
+                node_id, port_id
             );
         }
     }
