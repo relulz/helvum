@@ -1,6 +1,6 @@
 use gtk::{
     gdk,
-    glib::{self, subclass::Signal},
+    glib::{self, clone, subclass::Signal},
     prelude::*,
     subclass::prelude::*,
 };
@@ -8,6 +8,18 @@ use log::warn;
 use pipewire::spa::Direction;
 
 use crate::MediaType;
+
+/// A helper struct for linking a output port to an input port.
+/// It carries the output ports id.
+#[derive(Clone, Debug, glib::GBoxed)]
+#[gboxed(type_name = "HelvumForwardLink")]
+struct ForwardLink(u32);
+
+/// A helper struct for linking an input to an output port.
+/// It carries the input ports id.
+#[derive(Clone, Debug, glib::GBoxed)]
+#[gboxed(type_name = "HelvumReversedLink")]
+struct ReversedLink(u32);
 
 mod imp {
     use once_cell::{sync::Lazy, unsync::OnceCell};
@@ -67,45 +79,73 @@ impl Port {
 
         res.set_child(Some(&gtk::Label::new(Some(name))));
 
-        // Add either a drag source or drop target controller depending on direction,
-        // they will be responsible for link creation by dragging an output port onto an input port.
-        //
-        // FIXME: The type used for dragging is simply a u32.
-        //   This means that anything that provides a u32 could be dragged onto a input port,
-        //   leading to that port trying to create a link to an invalid output port.
-        //   We should use a newtype instead of a plain u32.
-        //   Additionally, this does not protect against e.g. dropping an outgoing audio port on an ingoing video port.
+        // Add a drag source and drop target controller with the type depending on direction,
+        // they will be responsible for link creation by dragging an output port onto an input port or the other way around.
+
+        // FIXME: We should protect against different media types, e.g. it should not be possible to drop a video port on an audio port.
         match direction {
             Direction::Input => {
-                let drop_target = gtk::DropTarget::new(u32::static_type(), gdk::DragAction::COPY);
-                let this = res.clone();
-                drop_target.connect_drop(move |drop_target, val, _, _| {
-                    if let Ok(source_id) = val.get::<u32>() {
-                        // Get the callback registered in the widget and call it
-                        drop_target
-                            .widget()
-                            .expect("Drop target has no widget")
-                            .emit_by_name("port-toggled", &[&source_id, &this.id()])
-                            .expect("Failed to send signal");
-                    } else {
-                        warn!("Invalid type dropped on ingoing port");
-                    }
+                // The port will simply provide its pipewire id to the drag target.
+                let drag_src = gtk::DragSourceBuilder::new()
+                    .content(&gdk::ContentProvider::for_value(
+                        &(ReversedLink(id).to_value()),
+                    ))
+                    .build();
+                res.add_controller(&drag_src);
 
-                    true
-                });
+                let drop_target =
+                    gtk::DropTarget::new(ForwardLink::static_type(), gdk::DragAction::COPY);
+                drop_target.connect_drop(
+                    clone!(@weak res as this => @default-panic, move |drop_target, val, _, _| {
+                        if let Ok(ForwardLink(source_id)) = val.get::<ForwardLink>() {
+                            // Get the callback registered in the widget and call it
+                            drop_target
+                                .widget()
+                                .expect("Drop target has no widget")
+                                .emit_by_name("port-toggled", &[&source_id, &this.id()])
+                                .expect("Failed to send signal");
+                        } else {
+                            warn!("Invalid type dropped on ingoing port");
+                        }
+
+                        true
+                    }),
+                );
                 res.add_controller(&drop_target);
             }
             Direction::Output => {
                 // The port will simply provide its pipewire id to the drag target.
                 let drag_src = gtk::DragSourceBuilder::new()
-                    .content(&gdk::ContentProvider::for_value(&(id.to_value())))
+                    .content(&gdk::ContentProvider::for_value(
+                        &(ForwardLink(id).to_value()),
+                    ))
                     .build();
                 res.add_controller(&drag_src);
 
-                // Display a grab cursor when the mouse is over the port so the user knows it can be dragged to another port.
-                res.set_cursor(gtk::gdk::Cursor::from_name("grab", None).as_ref());
+                let drop_target =
+                    gtk::DropTarget::new(ReversedLink::static_type(), gdk::DragAction::COPY);
+                drop_target.connect_drop(
+                    clone!(@weak res as this => @default-panic, move |drop_target, val, _, _| {
+                        if let Ok(ReversedLink(target_id)) = val.get::<ReversedLink>() {
+                            // Get the callback registered in the widget and call it
+                            drop_target
+                                .widget()
+                                .expect("Drop target has no widget")
+                                .emit_by_name("port-toggled", &[&this.id(), &target_id])
+                                .expect("Failed to send signal");
+                        } else {
+                            warn!("Invalid type dropped on outgoing port");
+                        }
+
+                        true
+                    }),
+                );
+                res.add_controller(&drop_target);
             }
         }
+
+        // Display a grab cursor when the mouse is over the port so the user knows it can be dragged to another port.
+        res.set_cursor(gtk::gdk::Cursor::from_name("grab", None).as_ref());
 
         // Color the port according to its media type.
         match media_type {
