@@ -1,7 +1,7 @@
 use gtk::{glib, prelude::*, subclass::prelude::*};
 use pipewire::spa::Direction;
 
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
 mod imp {
     use super::*;
@@ -11,7 +11,7 @@ mod imp {
     pub struct Node {
         pub(super) grid: gtk::Grid,
         pub(super) label: gtk::Label,
-        pub(super) ports: RefCell<HashMap<u32, Rc<crate::view::port::Port>>>,
+        pub(super) ports: RefCell<HashMap<u32, crate::view::port::Port>>,
         pub(super) num_ports_in: Cell<i32>,
         pub(super) num_ports_out: Cell<i32>,
     }
@@ -92,10 +92,10 @@ impl Node {
             }
         }
 
-        private.ports.borrow_mut().insert(id, Rc::new(port));
+        private.ports.borrow_mut().insert(id, port);
     }
 
-    pub fn get_port(&self, id: u32) -> Option<Rc<super::port::Port>> {
+    pub fn get_port(&self, id: u32) -> Option<super::port::Port> {
         let private = imp::Node::from_instance(self);
         private.ports.borrow_mut().get(&id).cloned()
     }
