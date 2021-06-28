@@ -276,10 +276,6 @@ impl GraphView {
         }
     }
 
-    /// Add a link to the graph.
-    ///
-    /// `add_link` takes three arguments: `link_id` is the id of the link as assigned by the pipewire server,
-    /// `from` and `to` are the id's of the ingoing and outgoing port, respectively.
     pub fn add_link(&self, link_id: u32, link: crate::PipewireLink) {
         let private = imp::GraphView::from_instance(self);
         private.links.borrow_mut().insert(link_id, link);
