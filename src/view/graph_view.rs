@@ -152,12 +152,25 @@ mod imp {
             for link in self.links.borrow().values() {
                 if let Some((from_x, from_y, to_x, to_y)) = self.get_link_coordinates(link) {
                     link_cr.move_to(from_x, from_y);
-                    link_cr.curve_to(from_x + 75.0, from_y, to_x - 75.0, to_y, to_x, to_y);
+
+                    // Place curve control offset by half the x distance between the two points.
+                    // This makes the curve scale well for varying distances between the two ports,
+                    // especially when the output port is farther right than the input port.
+                    let half_x_dist = f64::abs(from_x - to_x) / 2.0;
+                    link_cr.curve_to(
+                        from_x + half_x_dist,
+                        from_y,
+                        to_x - half_x_dist,
+                        to_y,
+                        to_x,
+                        to_y,
+                    );
+
                     if let Err(e) = link_cr.stroke() {
                         warn!("Failed to draw graphview links: {}", e);
                     };
                 } else {
-                    log::warn!("Could not get allocation of ports of link: {:?}", link);
+                    warn!("Could not get allocation of ports of link: {:?}", link);
                 }
             }
         }
