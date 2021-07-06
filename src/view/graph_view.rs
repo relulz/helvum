@@ -237,8 +237,8 @@ impl GraphView {
 
         // Place widgets in colums of 4, growing down, then right.
         // TODO: Make a better positioning algorithm.
-        let x = (private.nodes.borrow().len() / 4) as f32 * 400.0; // This relies on integer division rounding down.
-        let y = private.nodes.borrow().len() as f32 % 4.0 * 100.0;
+        let x = ((private.nodes.borrow().len() / 4) as f32 * 400.0) + 20.0; // This relies on integer division rounding down.
+        let y = (private.nodes.borrow().len() as f32 % 4.0 * 100.0) + 20.0;
 
         self.move_node(&node.clone().upcast(), x, y);
 
