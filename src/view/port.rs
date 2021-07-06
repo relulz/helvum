@@ -4,7 +4,7 @@ use gtk::{
     prelude::*,
     subclass::prelude::*,
 };
-use log::warn;
+use log::{trace, warn};
 use pipewire::spa::Direction;
 
 use crate::MediaType;
@@ -83,18 +83,34 @@ impl Port {
         // they will be responsible for link creation by dragging an output port onto an input port or the other way around.
 
         // FIXME: We should protect against different media types, e.g. it should not be possible to drop a video port on an audio port.
+
+        // The port will simply provide its pipewire id to the drag target.
+        let drag_src = gtk::DragSourceBuilder::new()
+            .content(&gdk::ContentProvider::for_value(&match direction {
+                Direction::Input => ReversedLink(id).to_value(),
+                Direction::Output => ForwardLink(id).to_value(),
+            }))
+            .build();
+        drag_src.connect_drag_begin(move |_, _| {
+            trace!("Drag started from port {}", id);
+        });
+        drag_src.connect_drag_cancel(move |_, _, _| {
+            trace!("Drag from port {} was cancelled", id);
+            false
+        });
+        res.add_controller(&drag_src);
+
+        // The drop target will accept either a `ForwardLink` or `ReversedLink` depending in its own direction,
+        // and use it to emit its `port-toggled` signal.
+        let drop_target = gtk::DropTarget::new(
+            match direction {
+                Direction::Input => ForwardLink::static_type(),
+                Direction::Output => ReversedLink::static_type(),
+            },
+            gdk::DragAction::COPY,
+        );
         match direction {
             Direction::Input => {
-                // The port will simply provide its pipewire id to the drag target.
-                let drag_src = gtk::DragSourceBuilder::new()
-                    .content(&gdk::ContentProvider::for_value(
-                        &(ReversedLink(id).to_value()),
-                    ))
-                    .build();
-                res.add_controller(&drag_src);
-
-                let drop_target =
-                    gtk::DropTarget::new(ForwardLink::static_type(), gdk::DragAction::COPY);
                 drop_target.connect_drop(
                     clone!(@weak res as this => @default-panic, move |drop_target, val, _, _| {
                         if let Ok(ForwardLink(source_id)) = val.get::<ForwardLink>() {
@@ -111,19 +127,8 @@ impl Port {
                         true
                     }),
                 );
-                res.add_controller(&drop_target);
             }
             Direction::Output => {
-                // The port will simply provide its pipewire id to the drag target.
-                let drag_src = gtk::DragSourceBuilder::new()
-                    .content(&gdk::ContentProvider::for_value(
-                        &(ForwardLink(id).to_value()),
-                    ))
-                    .build();
-                res.add_controller(&drag_src);
-
-                let drop_target =
-                    gtk::DropTarget::new(ReversedLink::static_type(), gdk::DragAction::COPY);
                 drop_target.connect_drop(
                     clone!(@weak res as this => @default-panic, move |drop_target, val, _, _| {
                         if let Ok(ReversedLink(target_id)) = val.get::<ReversedLink>() {
@@ -140,9 +145,9 @@ impl Port {
                         true
                     }),
                 );
-                res.add_controller(&drop_target);
             }
         }
+        res.add_controller(&drop_target);
 
         // Display a grab cursor when the mouse is over the port so the user knows it can be dragged to another port.
         res.set_cursor(gtk::gdk::Cursor::from_name("grab", None).as_ref());
