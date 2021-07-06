@@ -30,6 +30,7 @@ mod imp {
     /// Graphical representation of a pipewire port.
     #[derive(Default)]
     pub struct Port {
+        pub(super) label: OnceCell<gtk::Label>,
         pub(super) id: OnceCell<u32>,
         pub(super) direction: OnceCell<Direction>,
     }
@@ -38,10 +39,23 @@ mod imp {
     impl ObjectSubclass for Port {
         const NAME: &'static str = "Port";
         type Type = super::Port;
-        type ParentType = gtk::Button;
+        type ParentType = gtk::Widget;
+
+        fn class_init(klass: &mut Self::Class) {
+            klass.set_layout_manager_type::<gtk::BinLayout>();
+
+            // Make it look like a GTK button.
+            klass.set_css_name("button");
+        }
     }
 
     impl ObjectImpl for Port {
+        fn dispose(&self, _obj: &Self::Type) {
+            if let Some(label) = self.label.get() {
+                label.unparent()
+            }
+        }
+
         fn signals() -> &'static [Signal] {
             static SIGNALS: Lazy<Vec<Signal>> = Lazy::new(|| {
                 vec![Signal::builder(
@@ -58,18 +72,18 @@ mod imp {
         }
     }
     impl WidgetImpl for Port {}
-    impl ButtonImpl for Port {}
 }
 
 glib::wrapper! {
     pub struct Port(ObjectSubclass<imp::Port>)
-        @extends gtk::Button, gtk::Widget;
+        @extends gtk::Widget;
 }
 
 impl Port {
     pub fn new(id: u32, name: &str, direction: Direction, media_type: Option<MediaType>) -> Self {
         // Create the widget and initialize needed fields
         let res: Self = glib::Object::new(&[]).expect("Failed to create Port");
+
         let private = imp::Port::from_instance(&res);
         private.id.set(id).expect("Port id already set");
         private
@@ -77,7 +91,12 @@ impl Port {
             .set(direction)
             .expect("Port direction already set");
 
-        res.set_child(Some(&gtk::Label::new(Some(name))));
+        let label = gtk::Label::new(Some(name));
+        label.set_parent(&res);
+        private
+            .label
+            .set(label)
+            .expect("Port label was already set");
 
         // Add a drag source and drop target controller with the type depending on direction,
         // they will be responsible for link creation by dragging an output port onto an input port or the other way around.
