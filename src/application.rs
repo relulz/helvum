@@ -109,8 +109,9 @@ impl Application {
                 move |msg| {
                     match msg {
                         PipewireMessage::NodeAdded{ id, name } => app.add_node(id, name.as_str()),
-                        PipewireMessage::PortAdded{ id, node_id, name, direction, media_type} => app.add_port(id, name.as_str(), node_id, direction, media_type),
-                        PipewireMessage::LinkAdded{ id, node_from, port_from, node_to, port_to} => app.add_link(id, node_from, port_from, node_to, port_to),
+                        PipewireMessage::PortAdded{ id, node_id, name, direction, media_type } => app.add_port(id, name.as_str(), node_id, direction, media_type),
+                        PipewireMessage::LinkAdded{ id, node_from, port_from, node_to, port_to, active} => app.add_link(id, node_from, port_from, node_to, port_to, active),
+                        PipewireMessage::LinkStateChanged { id, active } => app.link_state_changed(id, active), // TODO
                         PipewireMessage::NodeRemoved { id } => app.remove_node(id),
                         PipewireMessage::PortRemoved { id, node_id } => app.remove_port(id, node_id),
                         PipewireMessage::LinkRemoved { id } => app.remove_link(id)
@@ -124,7 +125,7 @@ impl Application {
     }
 
     /// Add a new node to the view.
-    pub fn add_node(&self, id: u32, name: &str) {
+    fn add_node(&self, id: u32, name: &str) {
         info!("Adding node to graph: id {}", id);
 
         imp::Application::from_instance(self)
@@ -133,7 +134,7 @@ impl Application {
     }
 
     /// Add a new port to the view.
-    pub fn add_port(
+    fn add_port(
         &self,
         id: u32,
         name: &str,
@@ -168,7 +169,15 @@ impl Application {
     }
 
     /// Add a new link to the view.
-    pub fn add_link(&self, id: u32, node_from: u32, port_from: u32, node_to: u32, port_to: u32) {
+    fn add_link(
+        &self,
+        id: u32,
+        node_from: u32,
+        port_from: u32,
+        node_to: u32,
+        port_to: u32,
+        active: bool,
+    ) {
         info!("Adding link to graph: id {}", id);
 
         // FIXME: Links should be colored depending on the data they carry (video, audio, midi) like ports are.
@@ -182,7 +191,20 @@ impl Application {
                 node_to,
                 port_to,
             },
+            active,
         );
+    }
+
+    fn link_state_changed(&self, id: u32, active: bool) {
+        info!(
+            "Link state changed: Link (id={}) is now {}",
+            id,
+            if active { "active" } else { "inactive" }
+        );
+
+        imp::Application::from_instance(self)
+            .graphview
+            .set_link_state(id, active);
     }
 
     // Toggle a link between the two specified ports on the remote pipewire server.

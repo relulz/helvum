@@ -20,7 +20,8 @@ mod imp {
     #[derive(Default)]
     pub struct GraphView {
         pub(super) nodes: RefCell<HashMap<u32, Node>>,
-        pub(super) links: RefCell<HashMap<u32, crate::PipewireLink>>,
+        /// Stores the link and whether it is currently active.
+        pub(super) links: RefCell<HashMap<u32, (crate::PipewireLink, bool)>>,
     }
 
     #[glib::object_subclass]
@@ -150,9 +151,16 @@ mod imp {
                 .expect("Failed to get cairo context");
             link_cr.set_line_width(2.0);
             link_cr.set_source_rgb(0.0, 0.0, 0.0);
-            for link in self.links.borrow().values() {
+            for (link, active) in self.links.borrow().values() {
                 if let Some((from_x, from_y, to_x, to_y)) = self.get_link_coordinates(link) {
                     link_cr.move_to(from_x, from_y);
+
+                    // Use dashed line for inactive links, full line otherwise.
+                    if *active {
+                        link_cr.set_dash(&[], 0.0);
+                    } else {
+                        link_cr.set_dash(&[10.0, 5.0], 0.0);
+                    }
 
                     // Place curve control offset by half the x distance between the two points.
                     // This makes the curve scale well for varying distances between the two ports,
@@ -276,10 +284,20 @@ impl GraphView {
         }
     }
 
-    pub fn add_link(&self, link_id: u32, link: crate::PipewireLink) {
+    pub fn add_link(&self, link_id: u32, link: crate::PipewireLink, active: bool) {
         let private = imp::GraphView::from_instance(self);
-        private.links.borrow_mut().insert(link_id, link);
+        private.links.borrow_mut().insert(link_id, (link, active));
         self.queue_draw();
+    }
+
+    pub fn set_link_state(&self, link_id: u32, active: bool) {
+        let private = imp::GraphView::from_instance(self);
+        if let Some((_, state)) = private.links.borrow_mut().get_mut(&link_id) {
+            *state = active;
+            self.queue_draw();
+        } else {
+            warn!("Link state changed on unknown link (id={})", link_id);
+        }
     }
 
     pub fn remove_link(&self, id: u32) {

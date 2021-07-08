@@ -5,7 +5,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use gtk::glib::{self, clone};
 use log::{debug, info, warn};
 use pipewire::{
-    link::{Link, LinkListener},
+    link::{Link, LinkChangeMask, LinkListener, LinkState},
     prelude::*,
     properties,
     registry::{GlobalObject, Registry},
@@ -193,7 +193,13 @@ fn handle_link(
             let mut state = state.borrow_mut();
             if let Some(Item::Link { .. }) = state.get(id) {
                 // Info was an update - figure out if we should notify the gtk thread
-                // TODO
+                if info.change_mask().contains(LinkChangeMask::STATE) {
+                    sender.send(PipewireMessage::LinkStateChanged {
+                        id,
+                        active: matches!(info.state(), LinkState::Active)
+                    }).expect("Failed to send message");
+                }
+                // TODO -- check other values that might have changed
             } else {
                 // First time we get info. We can now notify the gtk thread of a new link.
                 let node_from = info.output_node_id();
@@ -210,7 +216,8 @@ fn handle_link(
                     node_from,
                     port_from,
                     node_to,
-                    port_to
+                    port_to,
+                    active: matches!(info.state(), LinkState::Active)
                 }).expect(
                     "Failed to send message"
                 );

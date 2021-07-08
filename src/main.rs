@@ -37,6 +37,11 @@ enum PipewireMessage {
         port_from: u32,
         node_to: u32,
         port_to: u32,
+        active: bool,
+    },
+    LinkStateChanged {
+        id: u32,
+        active: bool,
     },
     NodeRemoved {
         id: u32,
