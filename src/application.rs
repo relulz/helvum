@@ -83,7 +83,7 @@ impl Application {
         pw_sender: Sender<GtkMessage>,
     ) -> Self {
         let app: Application =
-            glib::Object::new(&[("application-id", &"org.freedesktop.ryuukyu.helvum")])
+            glib::Object::new(&[("application-id", &"org.freedesktop.ryuukyu.Helvum")])
                 .expect("Failed to create new Application");
 
         let imp = imp::Application::from_instance(&app);
