@@ -8,7 +8,9 @@ use gtk::{
 };
 use log::{error, warn};
 
-use std::collections::HashMap;
+use std::{cmp::Ordering, collections::HashMap};
+
+use crate::NodeType;
 
 mod imp {
     use super::*;
@@ -239,14 +241,37 @@ impl GraphView {
         glib::Object::new(&[]).expect("Failed to create GraphView")
     }
 
-    pub fn add_node(&self, id: u32, node: Node) {
+    pub fn add_node(&self, id: u32, node: Node, node_type: Option<NodeType>) {
         let private = imp::GraphView::from_instance(self);
         node.set_parent(self);
 
-        // Place widgets in colums of 4, growing down, then right.
-        // TODO: Make a better positioning algorithm.
-        let x = ((private.nodes.borrow().len() / 4) as f32 * 400.0) + 20.0; // This relies on integer division rounding down.
-        let y = (private.nodes.borrow().len() as f32 % 4.0 * 100.0) + 20.0;
+        // Place widgets in colums of 3, growing down
+        let x = if let Some(node_type) = node_type {
+            match node_type {
+                NodeType::Output => 20.0,
+                NodeType::Input => 820.0,
+            }
+        } else {
+            420.0
+        };
+
+        let y = private
+            .nodes
+            .borrow()
+            .values()
+            .map(|node| {
+                //Map nodes to locations
+                self.get_node_position(&node.clone().upcast())
+            })
+            .filter(|&(x2, _y)| {
+                //Only look in our column
+                (x - x2).abs() < 50.0
+            })
+            .max_by(|y1, y2| {
+                //Get max in column
+                y1.partial_cmp(y2).unwrap_or(Ordering::Equal)
+            })
+            .map_or(20_f32, |(_x, y)| y + 100.0);
 
         self.move_node(&node.clone().upcast(), x, y);
 

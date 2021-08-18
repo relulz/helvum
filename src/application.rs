@@ -11,7 +11,7 @@ use pipewire::{channel::Sender, spa::Direction};
 
 use crate::{
     view::{self},
-    GtkMessage, MediaType, PipewireLink, PipewireMessage,
+    GtkMessage, MediaType, NodeType, PipewireLink, PipewireMessage,
 };
 
 static STYLE: &str = include_str!("style.css");
@@ -108,7 +108,7 @@ impl Application {
                 @weak app => @default-return Continue(true),
                 move |msg| {
                     match msg {
-                        PipewireMessage::NodeAdded{ id, name } => app.add_node(id, name.as_str()),
+                        PipewireMessage::NodeAdded{ id, name, node_type } => app.add_node(id, name.as_str(), node_type),
                         PipewireMessage::PortAdded{ id, node_id, name, direction, media_type } => app.add_port(id, name.as_str(), node_id, direction, media_type),
                         PipewireMessage::LinkAdded{ id, node_from, port_from, node_to, port_to, active} => app.add_link(id, node_from, port_from, node_to, port_to, active),
                         PipewireMessage::LinkStateChanged { id, active } => app.link_state_changed(id, active), // TODO
@@ -125,12 +125,14 @@ impl Application {
     }
 
     /// Add a new node to the view.
-    fn add_node(&self, id: u32, name: &str) {
+    fn add_node(&self, id: u32, name: &str, node_type: Option<NodeType>) {
         info!("Adding node to graph: id {}", id);
 
-        imp::Application::from_instance(self)
-            .graphview
-            .add_node(id, view::Node::new(name));
+        imp::Application::from_instance(self).graphview.add_node(
+            id,
+            view::Node::new(name),
+            node_type,
+        );
     }
 
     /// Add a new port to the view.

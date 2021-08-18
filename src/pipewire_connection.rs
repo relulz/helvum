@@ -14,7 +14,7 @@ use pipewire::{
     Context, Core, MainLoop,
 };
 
-use crate::{GtkMessage, MediaType, PipewireMessage};
+use crate::{GtkMessage, MediaType, NodeType, PipewireMessage};
 use state::{Item, State};
 
 enum ProxyItem {
@@ -112,6 +112,27 @@ fn handle_node(
         }
     });
 
+    let media_class = |class: &str| {
+        if class.contains("Sink") || class.contains("Input") {
+            Some(NodeType::Input)
+        } else if class.contains("Source") || class.contains("Output") {
+            Some(NodeType::Output)
+        } else {
+            None
+        }
+    };
+
+    let node_type = props
+        .get("media.category")
+        .and_then(|class| {
+            if class.contains("Duplex") {
+                None
+            } else {
+                props.get("media.class").and_then(media_class)
+            }
+        })
+        .or_else(|| props.get("media.class").and_then(media_class));
+
     state.borrow_mut().insert(
         node.id,
         Item::Node {
@@ -121,7 +142,11 @@ fn handle_node(
     );
 
     sender
-        .send(PipewireMessage::NodeAdded { id: node.id, name })
+        .send(PipewireMessage::NodeAdded {
+            id: node.id,
+            name,
+            node_type,
+        })
         .expect("Failed to send message");
 }
 

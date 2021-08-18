@@ -23,6 +23,7 @@ enum PipewireMessage {
     NodeAdded {
         id: u32,
         name: String,
+        node_type: Option<NodeType>,
     },
     PortAdded {
         id: u32,
@@ -53,6 +54,12 @@ enum PipewireMessage {
     LinkRemoved {
         id: u32,
     },
+}
+
+#[derive(Debug, Clone)]
+pub enum NodeType {
+    Input,
+    Output,
 }
 
 #[derive(Debug, Copy, Clone)]
