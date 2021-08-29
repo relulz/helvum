@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Helvum
+GenericName=Patchbay
+Comment=A patchbay for pipewire
+Type=Application
+Exec=helvum
+Terminal=false
+Categories=AudioVideo;Audio;Video;Midi;Settings;GNOME;GTK;

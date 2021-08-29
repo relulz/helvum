@@ -6,6 +6,8 @@ project(
   meson_version: '>=0.50.0'
 )
 
+base_id = 'org.freedesktop.ryuukyu.Helvum'
+
 dependency('glib-2.0', version: '>= 2.48')
 dependency('gtk4',     version: '>= 4.0.0')
 dependency('libpipewire-0.3')
@@ -16,11 +18,13 @@ if rust_version < min_rust_version
   error('Rust version too old: Required version is ' + min_rust_version + ' but actual version is ' + rust_version)
 endif
 
+desktop_file_validate = find_program('desktop-file-validate', required: false)
 cargo = find_program('cargo', required: true)
 cargo_script = find_program('build-aux/cargo.sh')
 
 prefix = get_option('prefix')
 bindir = prefix / get_option('bindir')
+datadir = prefix / get_option('datadir')
 
 cargo_sources = files(
   'Cargo.toml',
@@ -28,3 +32,6 @@ cargo_sources = files(
 )
 
 subdir('src')
+subdir('data')
+
+meson.add_install_script('build-aux/meson_post_install.py')
