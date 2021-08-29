@@ -3,33 +3,35 @@
     "runtime": "org.gnome.Platform",
     "runtime-version": "40",
     "sdk": "org.gnome.Sdk",
-    "sdk-extensions": ["org.freedesktop.Sdk.Extension.rust-stable"],
+    "sdk-extensions": [
+        "org.freedesktop.Sdk.Extension.rust-stable"
+    ],
     "command": "helvum",
-    "finish-args" : [
+    "finish-args": [
         "--socket=fallback-x11",
         "--socket=wayland",
         "--device=dri",
         "--share=ipc",
         "--filesystem=xdg-run/pipewire-0"
     ],
-    "build-options" : {
-        "append-path" : "/usr/lib/sdk/rust-stable/bin",
-        "build-args" : [
+    "build-options": {
+        "append-path": "/usr/lib/sdk/rust-stable/bin",
+        "build-args": [
             "--share=network"
         ]
     },
     "modules": [
         {
             "name": "Helvum",
-            "buildsystem": "simple",
-            "build-commands": [
-                "cargo install --path . --root /app --no-track"
-            ],
+            "buildsystem": "meson",
             "sources": [
                 {
                     "type": "dir",
-                    "path": "./"
+                    "path": "../"
                 }
+            ],
+            "config-opts": [
+                "-Dprofile=development"
             ]
         }
     ]

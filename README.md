@@ -24,27 +24,32 @@ $ flatpak install org.gnome.{Platform,Sdk}//40 org.freedesktop.Sdk.Extension.rus
 
 To compile and install as a flatpak, run
 ```shell
-$ flatpak-builder --install flatpak-build/ org.freedesktop.ryuukyu.Helvum.json
+$ flatpak-builder --install flatpak-build/ build-aux/org.freedesktop.ryuukyu.Helvum.json
 ```
 
 You can then run the app via
 ```shell
-flatpak run org.freedesktop.ryuukyu.Helvum
+$ flatpak run org.freedesktop.ryuukyu.Helvum
 ```
 
 ## Manually
 For compilation, you will need:
 
+- Meson
 - An up-to-date rust toolchain
 - `libclang-3.7` or higher
 - `gtk-4.0` and `pipewire-0.3` development headers
 
-To compile, run
+To compile and install, run
 
-    $ cargo build --release
+```shell
+$ meson setup build && cd build
+$ meson compile
+$ meson install
+```
 
 in the repository root.
-The resulting binary will be at `target/release/helvum`.
+This will install the compiled project files into `/usr/local`.
 
 # License
 Helvum is distributed under the terms of the GPL3 license.
