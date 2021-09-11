@@ -47,27 +47,32 @@ mod imp {
 
             drag_controller.connect_drag_begin(
                 clone!(@strong drag_state => move |drag_controller, x, y| {
-                let mut drag_state = drag_state.borrow_mut();
-                let widget = drag_controller
-                    .widget()
-                    .expect("drag-begin event has no widget")
-                    .dynamic_cast::<Self::Type>()
-                    .expect("drag-begin event is not on the GraphView");
-                // pick() should at least return the widget itself.
-                let target = widget.pick(x, y, gtk::PickFlags::DEFAULT).expect("drag-begin pick() did not return a widget");
-                *drag_state = if target.ancestor(Port::static_type()).is_some() {
-                    // The user targeted a port, so the dragging should be handled by the Port
-                    // component instead of here.
-                    None
-                } else if let Some(target) = target.ancestor(Node::static_type()) {
-                    // The user targeted a Node without targeting a specific Port.
-                    // Drag the Node around the screen.
-                    let (x, y) = widget.get_node_position(&target);
-                    Some((target, x, y))
-                } else {
-                    None
+                    let mut drag_state = drag_state.borrow_mut();
+                    let widget = drag_controller
+                        .widget()
+                        .expect("drag-begin event has no widget")
+                        .dynamic_cast::<Self::Type>()
+                        .expect("drag-begin event is not on the GraphView");
+                    // pick() should at least return the widget itself.
+                    let target = widget.pick(x, y, gtk::PickFlags::DEFAULT).expect("drag-begin pick() did not return a widget");
+                    *drag_state = if target.ancestor(Port::static_type()).is_some() {
+                        // The user targeted a port, so the dragging should be handled by the Port
+                        // component instead of here.
+                        None
+                    } else if let Some(target) = target.ancestor(Node::static_type()) {
+                        // The user targeted a Node without targeting a specific Port.
+                        // Drag the Node around the screen.
+                        if let Some((x, y)) = widget.get_node_position(&target) {
+                            Some((target, x, y))
+                        } else {
+                            error!("Failed to obtain position of dragged node, drag aborted.");
+                            None
+                        }
+                    } else {
+                        None
+                    }
                 }
-            }));
+            ));
             drag_controller.connect_drag_update(
                 clone!(@strong drag_state => move |drag_controller, x, y| {
                     let widget = drag_controller
@@ -259,16 +264,16 @@ impl GraphView {
             .nodes
             .borrow()
             .values()
-            .map(|node| {
-                //Map nodes to locations
+            .filter_map(|node| {
+                // Map nodes to locations, discard nodes without location
                 self.get_node_position(&node.clone().upcast())
             })
-            .filter(|&(x2, _y)| {
-                //Only look in our column
+            .filter(|(x2, _)| {
+                // Only look for other nodes that have a similar x coordinate
                 (x - x2).abs() < 50.0
             })
             .max_by(|y1, y2| {
-                //Get max in column
+                // Get max in column
                 y1.partial_cmp(y2).unwrap_or(Ordering::Equal)
             })
             .map_or(20_f32, |(_x, y)| y + 100.0);
@@ -333,7 +338,10 @@ impl GraphView {
         self.queue_draw();
     }
 
-    pub(super) fn get_node_position(&self, node: &gtk::Widget) -> (f32, f32) {
+    /// Get the position of the specified node inside the graphview.
+    ///
+    /// Returns `None` if the node is not in the graphview.
+    pub(super) fn get_node_position(&self, node: &gtk::Widget) -> Option<(f32, f32)> {
         let layout_manager = self
             .layout_manager()
             .expect("Failed to get layout manager")
@@ -341,12 +349,13 @@ impl GraphView {
             .expect("Failed to cast to FixedLayout");
 
         let node = layout_manager
-            .layout_child(node)
-            .expect("Could not get layout child")
+            .layout_child(node)?
             .dynamic_cast::<gtk::FixedLayoutChild>()
             .expect("Could not cast to FixedLayoutChild");
-        let transform = node.transform().unwrap_or_default();
-        transform.to_translate()
+        let transform = node
+            .transform()
+            .expect("Failed to obtain transform from layout child");
+        Some(transform.to_translate())
     }
 
     pub(super) fn move_node(&self, node: &gtk::Widget, x: f32, y: f32) {
