@@ -14,7 +14,7 @@ categories = ["gui", "multimedia"]
 
 [dependencies]
 pipewire = "0.4"
-gtk = { version = "0.2", package = "gtk4" }
+gtk = { version = "0.3", package = "gtk4" }
 
 log = "0.4.11"
 env_logger = "0.9.0"
