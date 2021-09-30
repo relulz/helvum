@@ -1,6 +1,6 @@
 [package]
 name = "helvum"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Tom A. Wagner <tom.a.wagner@protonmail.com>"]
 edition = "2018"
 license = "GPL-3.0-only"
