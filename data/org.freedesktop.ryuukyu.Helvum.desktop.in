@@ -6,3 +6,4 @@ Type=Application
 Exec=helvum
 Terminal=false
 Categories=AudioVideo;Audio;Video;Midi;Settings;GNOME;GTK;
+Icon=@icon@

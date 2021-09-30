@@ -25,6 +25,7 @@ cargo_script = find_program('build-aux/cargo.sh')
 prefix = get_option('prefix')
 bindir = prefix / get_option('bindir')
 datadir = prefix / get_option('datadir')
+iconsdir = datadir / 'icons'
 
 cargo_sources = files(
   'Cargo.toml',
