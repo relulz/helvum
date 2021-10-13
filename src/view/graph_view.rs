@@ -197,7 +197,6 @@ mod imp {
                         0.0
                     };
 
-
                     // Place curve control offset by half the x distance between the two points.
                     // This makes the curve scale well for varying distances between the two ports,
                     // especially when the output port is farther right than the input port.
