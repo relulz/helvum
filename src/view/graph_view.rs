@@ -188,15 +188,24 @@ mod imp {
                         link_cr.set_dash(&[10.0, 5.0], 0.0);
                     }
 
+                    // If the output port is farther right than the input port and they have
+                    // a similar y coordinate, apply a y offset to the control points
+                    // so that the curve sticks out a bit.
+                    let y_control_offset = if from_x > to_x {
+                        f64::max(0.0, 25.0 - (from_y - to_y).abs())
+                    } else {
+                        0.0
+
+
                     // Place curve control offset by half the x distance between the two points.
                     // This makes the curve scale well for varying distances between the two ports,
                     // especially when the output port is farther right than the input port.
                     let half_x_dist = f64::abs(from_x - to_x) / 2.0;
                     link_cr.curve_to(
                         from_x + half_x_dist,
-                        from_y,
+                        from_y - y_control_offset,
                         to_x - half_x_dist,
-                        to_y,
+                        to_y - y_control_offset,
                         to_x,
                         to_y,
                     );
