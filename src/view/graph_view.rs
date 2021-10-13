@@ -195,6 +195,7 @@ mod imp {
                         f64::max(0.0, 25.0 - (from_y - to_y).abs())
                     } else {
                         0.0
+                    };
 
 
                     // Place curve control offset by half the x distance between the two points.
