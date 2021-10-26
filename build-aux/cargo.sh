@@ -1,4 +1,6 @@
-#!/bin/sh
+#!/bin/bash
+
+set -euo pipefail
 
 export MESON_BUILD_ROOT="$1"
 export MESON_SOURCE_ROOT="$2"
@@ -9,12 +11,11 @@ if [[ $4 = "development" ]]
 then
     echo "DEBUG MODE"
     cargo build --manifest-path \
-        "$MESON_SOURCE_ROOT"/Cargo.toml && \
-        cp "$CARGO_TARGET_DIR"/debug/$5 $3
+        "$MESON_SOURCE_ROOT/Cargo.toml" && \
+        cp "$CARGO_TARGET_DIR/debug/$5" "$3"
 else
     echo "RELEASE MODE"
     cargo build --manifest-path \
-        "$MESON_SOURCE_ROOT"/Cargo.toml --release && \
-        cp "$CARGO_TARGET_DIR"/release/$5 $3
+        "$MESON_SOURCE_ROOT/Cargo.toml" --release && \
+        cp "$CARGO_TARGET_DIR/release/$5" "$3"
 fi
-
