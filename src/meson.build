@@ -3,6 +3,7 @@ rust_sources = files(
   'main.rs',
   'pipewire_connection.rs',
   'pipewire_connection/state.rs',
+  'style.css',
   'view/graph_view.rs',
   'view/mod.rs',
   'view/node.rs',

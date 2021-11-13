@@ -1,14 +1,20 @@
+@define-color audio rgb(50,100,240);
+@define-color video rgb(200,200,0);
+@define-color midi rgb(200,0,50);
+@define-color graphview-link black;
+@define-color graphview-grid @text_view_bg;
+
 .audio {
-    background: rgb(50,100,240);
+    background: @audio;
     color: black;
 }
 
 .video {
-    background: rgb(200,200,0);
+    background: @video;
     color: black;
 }
 
 .midi {
-    background: rgb(200,0,50);
+    background: @midi;
     color: black;
 }

@@ -134,7 +134,7 @@ mod imp {
                 .expect("Failed to get cairo context");
 
             // Try to replace the background color with a darker one from the theme.
-            if let Some(rgba) = widget.style_context().lookup_color("text_view_bg") {
+            if let Some(rgba) = widget.style_context().lookup_color("graphview-grid") {
                 background_cr.set_source_rgb(rgba.red.into(), rgba.green.into(), rgba.blue.into());
                 if let Err(e) = background_cr.paint() {
                     warn!("Failed to paint graphview background: {}", e);
@@ -175,8 +175,25 @@ mod imp {
                     alloc.height as f32,
                 ))
                 .expect("Failed to get cairo context");
+
             link_cr.set_line_width(2.0);
-            link_cr.set_source_rgb(0.0, 0.0, 0.0);
+
+            let gtk::gdk::RGBA {
+                red,
+                green,
+                blue,
+                alpha,
+            } = widget
+                .style_context()
+                .lookup_color("graphview-link")
+                .unwrap_or(gtk::gdk::RGBA {
+                    red: 0.0,
+                    green: 0.0,
+                    blue: 0.0,
+                    alpha: 0.0,
+                });
+            link_cr.set_source_rgba(red.into(), green.into(), blue.into(), alpha.into());
+
             for (link, active) in self.links.borrow().values() {
                 if let Some((from_x, from_y, to_x, to_y)) = self.get_link_coordinates(link) {
                     link_cr.move_to(from_x, from_y);
