@@ -1,10 +1,11 @@
 {
     "app-id": "org.freedesktop.ryuukyu.Helvum",
     "runtime": "org.gnome.Platform",
-    "runtime-version": "40",
+    "runtime-version": "41",
     "sdk": "org.gnome.Sdk",
     "sdk-extensions": [
-        "org.freedesktop.Sdk.Extension.rust-stable"
+        "org.freedesktop.Sdk.Extension.rust-stable",
+        "org.freedesktop.Sdk.Extension.llvm12"
     ],
     "command": "helvum",
     "finish-args": [
@@ -15,7 +16,8 @@
         "--filesystem=xdg-run/pipewire-0"
     ],
     "build-options": {
-        "append-path": "/usr/lib/sdk/rust-stable/bin",
+        "append-path": "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm12/bin",
+        "prepend-ld-library-path": "/usr/lib/sdk/llvm12/lib",
         "build-args": [
             "--share=network"
         ]
