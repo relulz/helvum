@@ -19,7 +19,7 @@ The recommended way to build is using flatpak, which will take care of all depen
 
 First, install the required flatpak platform and SDK, if you dont have them already:
 ```shell
-$ flatpak install org.gnome.{Platform,Sdk}//40 org.freedesktop.Sdk.Extension.rust-stable//20.08
+$ flatpak install org.gnome.{Platform,Sdk}//41 org.freedesktop.Sdk.Extension.rust-stable//20.08 org.freedesktop.Sdk.Extension.llvm12//20.08
 ```
 
 To compile and install as a flatpak, run
