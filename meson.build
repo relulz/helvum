@@ -9,7 +9,7 @@ project(
 base_id = 'org.freedesktop.ryuukyu.Helvum'
 
 dependency('glib-2.0', version: '>= 2.48')
-dependency('gtk4',     version: '>= 4.0.0')
+dependency('gtk4',     version: '>= 4.4.0')
 dependency('libpipewire-0.3')
 
 desktop_file_validate = find_program('desktop-file-validate', required: false)
