@@ -54,6 +54,7 @@ mod imp {
         fn class_init(klass: &mut Self::Class) {
             // The layout manager determines how child widgets are laid out.
             klass.set_layout_manager_type::<gtk::FixedLayout>();
+            klass.set_css_name("graphview");
         }
     }
 
@@ -123,23 +124,12 @@ mod imp {
             Try to use relative units (em) and colours from the theme as much as possible. */
 
             let alloc = widget.allocation();
+            let widget_bounds =
+                graphene::Rect::new(0.0, 0.0, alloc.width as f32, alloc.height as f32);
 
             let background_cr = snapshot
-                .append_cairo(&graphene::Rect::new(
-                    0.0,
-                    0.0,
-                    alloc.width as f32,
-                    alloc.height as f32,
-                ))
+                .append_cairo(&widget_bounds)
                 .expect("Failed to get cairo context");
-
-            // Try to replace the background color with a darker one from the theme.
-            if let Some(rgba) = widget.style_context().lookup_color("graphview-grid") {
-                background_cr.set_source_rgb(rgba.red.into(), rgba.green.into(), rgba.blue.into());
-                if let Err(e) = background_cr.paint() {
-                    warn!("Failed to paint graphview background: {}", e);
-                };
-            } // TODO: else log colour not found
 
             // Draw a nice grid on the background.
             background_cr.set_source_rgb(0.18, 0.18, 0.18);
