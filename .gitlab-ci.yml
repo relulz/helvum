@@ -1,6 +1,6 @@
 include:
   - project: 'freedesktop/ci-templates'             # the project to include from
-    ref: '98f557799157ebb0395cf11d40f01f61fbbace20' # git ref of that project
+    ref: '34f4ade99434043f88e164933f570301fd18b125' # git ref of that project
     file: '/templates/fedora.yml'                   # the actual file to include
 
 stages:
