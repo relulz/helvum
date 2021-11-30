@@ -21,6 +21,12 @@ bindir = prefix / get_option('bindir')
 datadir = prefix / get_option('datadir')
 iconsdir = datadir / 'icons'
 
+meson.add_dist_script(
+  'build-aux/dist-vendor.sh',
+  meson.build_root() / 'meson-dist' / meson.project_name() + '-' + meson.project_version(),
+  meson.source_root()
+)
+
 cargo_sources = files(
   'Cargo.toml',
   'Cargo.lock',
