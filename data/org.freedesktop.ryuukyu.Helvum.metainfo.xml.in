@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2021 Tom A. Wagner <tom.a.wagner@protonmail.com> -->
+<component type="desktop-application">
+    <id>@app-id@</id>
+    <metadata_license>CC-BY-SA-4.0</metadata_license>
+    <project_license>GPL-3.0-only</project_license>
+    <name>Helvum</name>
+    <summary>Patchbay for PipeWire</summary>
+    <description>
+        <p>
+            Helvum is a graphical patchbay for PipeWire.
+            It allows creating and removing connections between applications and/or devices to reroute
+            flow of audio, video and MIDI data to where it is needed.
+        </p>
+    </description>
+    <screenshots>
+        <screenshot type="default">
+            <image>https://gitlab.freedesktop.org/ryuukyu/helvum/-/raw/main/docs/screenshot.png</image>
+        </screenshot>
+    </screenshots>
+    <launchable type="desktop-id">@app-id@.desktop</launchable>
+    <url type="homepage">https://gitlab.freedesktop.org/ryuukyu/helvum</url>
+    <url type="bugtracker">https://gitlab.freedesktop.org/ryuukyu/helvum/-/issues</url>
+    <content_rating type="oars-1.0" />
+    <releases>
+        <release version="0.3.2" date="2021-11-30" />
+        <release version="0.3.1" date="2021-09-30" />
+        <release version="0.3.0" date="2021-08-08" />
+        <release version="0.2.1" date="2021-06-06" />
+        <release version="0.2.0" date="2021-05-21" />
+        <release version="0.1.0" date="2021-01-12" />
+    </releases>
+    <kudos>
+        <kodu>HiDpiIcon</kodu>
+        <kudo>ModernToolkit</kudo>
+    </kudos>
+    <developer_name>Tom A. Wagner</developer_name>
+    <update_contact>tom.a.wagner@protonmail.com</update_contact>
+</component>

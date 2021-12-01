@@ -13,6 +13,7 @@ dependency('gtk4',     version: '>= 4.4.0')
 dependency('libpipewire-0.3')
 
 desktop_file_validate = find_program('desktop-file-validate', required: false)
+appstream_util = find_program('appstream-util', required: false)
 cargo = find_program('cargo', required: true)
 cargo_script = find_program('build-aux/cargo.sh')
 
