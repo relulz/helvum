@@ -27,7 +27,7 @@ Then install the required flatpak platform and SDK, if you dont have them alread
 $ flatpak install org.gnome.{Platform,Sdk}//41 org.freedesktop.Sdk.Extension.rust-stable//21.08 org.freedesktop.Sdk.Extension.llvm12//21.08
 ```
 
-To compile and install as a flatpak, run
+To compile and install as a flatpak, clone the project, change to the project directory, and run:
 ```shell
 $ flatpak-builder --install flatpak-build/ build-aux/org.freedesktop.ryuukyu.Helvum.json
 ```
