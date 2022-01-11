@@ -21,10 +21,8 @@ mod application;
 mod pipewire_connection;
 mod view;
 
-use gtk::{
-    glib::{self, PRIORITY_DEFAULT},
-    prelude::*,
-};
+use glib::PRIORITY_DEFAULT;
+use gtk::prelude::*;
 use pipewire::spa::Direction;
 
 /// Messages sent by the GTK thread to notify the pipewire thread.
@@ -96,8 +94,20 @@ pub struct PipewireLink {
     pub port_to: u32,
 }
 
+static GLIB_LOGGER: glib::GlibLogger = glib::GlibLogger::new(
+    glib::GlibLoggerFormat::Structured,
+    glib::GlibLoggerDomain::CrateTarget,
+);
+
+fn init_glib_logger() {
+    log::set_logger(&GLIB_LOGGER).expect("Failed to set logger");
+
+    // Glib does not have a "Trace" log level, so only print messages "Debug" or higher priority.
+    log::set_max_level(log::LevelFilter::Debug);
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
+    init_glib_logger();
     gtk::init()?;
 
     // Aquire main context so that we can attach the gtk channel later.

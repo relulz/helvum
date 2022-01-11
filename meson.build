@@ -8,7 +8,7 @@ project(
 
 base_id = 'org.freedesktop.ryuukyu.Helvum'
 
-dependency('glib-2.0', version: '>= 2.48')
+dependency('glib-2.0', version: '>= 2.66')
 dependency('gtk4',     version: '>= 4.4.0')
 dependency('libpipewire-0.3')
 

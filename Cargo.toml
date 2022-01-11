@@ -16,8 +16,8 @@ categories = ["gui", "multimedia"]
 [dependencies]
 pipewire = "0.4"
 gtk = { version = "0.3", package = "gtk4" }
+glib = { version = "0.14", features = ["log"] }
 
 log = "0.4.11"
-env_logger = "0.9.0"
 
 once_cell = "1.7.2"
