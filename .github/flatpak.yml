@@ -1,0 +1,22 @@
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+name: "Flatpak"
+jobs:
+  flatpak:
+    name: "Flatpak"
+    runs-on: ubuntu-latest
+    container:
+      image: bilelmoussaoui/flatpak-github-actions:gnome-41
+      options: --privileged
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - uses: bilelmoussaoui/flatpak-github-actions/flatpak-builder@v4
+      with:
+        bundle: org.freedesktop.ryuukyu.Helvum.flatpak
+        manifest-path: build-aux/org.freedesktop.ryuukyu.Helvum.json
+        cache-key: flatpak-builder-${{ github.sha }}
