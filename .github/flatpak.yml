@@ -20,3 +20,4 @@ jobs:
         bundle: org.freedesktop.ryuukyu.Helvum.flatpak
         manifest-path: build-aux/org.freedesktop.ryuukyu.Helvum.json
         cache-key: flatpak-builder-${{ github.sha }}
+
