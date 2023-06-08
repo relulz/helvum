@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=Helvum
 GenericName=Patchbay
-Comment=A patchbay for pipewire
+Comment=A patchbay for PipeWire
 Type=Application
 Exec=helvum
 Terminal=false

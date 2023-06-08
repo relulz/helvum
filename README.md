@@ -1,4 +1,4 @@
-Helvum is a GTK-based patchbay for pipewire, inspired by the JACK tool [catia](https://kx.studio/Applications:Catia).
+Helvum is a GTK-based patchbay for PipeWire, inspired by the JACK tool [catia](https://kx.studio/Applications:Catia).
 
 ![Screenshot](docs/screenshot.png)
 
